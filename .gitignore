@@ -1,0 +1,14 @@
+node_modules/
+dist/
+apps/api/.env
+apps/mobile/.env
+.env
+*.env.local
+.expo/
+ios/
+android/
+.DS_Store
+*.log
+docs/
+CLAUDE.md
+.claude/
