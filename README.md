@@ -1,40 +1,32 @@
 # FoodStorii
 
-A mobile app that helps households reduce food waste, understand what food they have, decide what to cook, and coordinate grocery actions — powered by Tina, a calm and domain-specific household food assistant.
+FoodStorii helps households reduce food waste, know what they have, and decide what to cook — guided by Tina, an AI food assistant built specifically for your kitchen.
 
-### How Tina works
+We're currently in development. If you'd like early access, join the waitlist at **[foodstorii.org](https://www.foodstorii.org)**.
+
+---
+
+## What we're building
+
+Most households throw away food they forgot they had, buy things they already own, and struggle to answer the daily question of what to cook. FoodStorii solves this through a conversational AI assistant that knows your kitchen, tracks your inventory, and suggests recipes based on what you actually have. We plan to extend this agent to have other capabilities in the near future. 
+
+---
 
 ## Tech stack
 
 | Layer | Technology |
 |---|---|
 | Mobile | Expo React Native (TypeScript) |
-| AI Agent | OpenAI gpt-4o via Supabase Edge Functions (Deno) |
-| Database | Supabase (Postgres) |
+| AI Agent | OpenAI gpt-4o |
+| Backend | Supabase Edge Functions (Deno) |
+| Database | Supabase (Postgres + pgvector) |
 | Auth | Supabase Auth |
-| Storage | Supabase Storage |
-| Semantic search | pgvector inside Postgres |
 | Push notifications | Expo Push API |
 
 ---
 
-## Setup
+## Status
 
-### Prerequisites
+This is an active development repository. The product is not yet publicly available.
 
-- Node.js 20+
-- Supabase CLI (`npm install -g supabase`)
-- Expo CLI (`npm install -g expo`)
-- A Supabase project
-
-
-### 5. Run the mobile app
-
-```bash
-cd apps/mobile
-npm install
-npx expo start
-```
-
----
-
+Follow along or join the waitlist at [foodstorii.org](https://www.foodstorii.org).
