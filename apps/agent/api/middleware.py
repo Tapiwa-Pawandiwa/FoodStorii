@@ -1,13 +1,13 @@
 """
 JWT auth middleware and dependency for FastAPI.
-Validates Supabase-issued JWTs using HS256 + JWT_SECRET.
-Resolves household_id from the users table.
+Validates Supabase-issued JWTs by calling supabase.auth.get_user(token) —
+the same pattern used by all Supabase Edge Functions via resolveAuth().
+This works with both the legacy JWT secret and the new Supabase signing key formats.
 """
 import structlog
-from fastapi import Request, HTTPException, Depends
+from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from jose import jwt, JWTError
 from config import settings
 from db.supabase import get_supabase
 
@@ -29,17 +29,21 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 return JSONResponse({"error": "Unauthorized"}, status_code=401)
             return await call_next(request)
 
-        # All other routes require a valid Supabase user JWT
+        # All other routes: validate via Supabase auth.get_user()
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
             return JSONResponse({"error": "Missing Authorization header"}, status_code=401)
 
         token = auth_header.removeprefix("Bearer ").strip()
         try:
-            payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"], options={"verify_aud": False})
-            request.state.user_id = payload.get("sub")
-            request.state.jwt_payload = payload
-        except JWTError as e:
+            db = get_supabase()
+            response = await db.auth.get_user(token)
+            user = response.user
+            if not user:
+                return JSONResponse({"error": "Invalid or expired token"}, status_code=401)
+            request.state.user_id = user.id
+            request.state.token = token
+        except Exception as e:
             log.warning("jwt_validation_failed", error=str(e))
             return JSONResponse({"error": "Invalid or expired token"}, status_code=401)
 

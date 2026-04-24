@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     supabase_db_url: str
     redis_url: str                        # Railway Redis — auto-injected
     internal_secret: str
-    jwt_secret: str
     environment: str = "production"
     max_thread_messages: int = 20
     context_cache_ttl_seconds: int = 300
