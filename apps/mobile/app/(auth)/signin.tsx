@@ -7,15 +7,17 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { FoodStoriiWordmark } from '../../src/components/common/FoodStoriiWordmark';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/common/Button';
 import { TextInput } from '../../src/components/common/TextInput';
 import { useAuthStore } from '../../src/stores/auth.store';
 import * as api from '../../src/services/api';
-import { colors, spacing, typography } from '../../src/theme';
+import { colors, spacing, typography, radius } from '../../src/theme';
 import { usePostHog } from 'posthog-react-native';
 
 export default function SignInScreen() {
@@ -25,6 +27,22 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      await api.signInWithGoogle();
+      posthog.capture('user_signed_in', { method: 'google' });
+      // Routing is handled by _layout.tsx SIGNED_IN event — no navigation here
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
+      if (msg !== 'Sign-in cancelled') setError(msg);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSignIn = async () => {
     if (!email.trim() || !password) return;
@@ -109,6 +127,28 @@ export default function SignInScreen() {
 
             <Button label="Sign in" onPress={handleSignIn} loading={loading} style={styles.btn} />
 
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google sign-in */}
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading}
+              activeOpacity={0.85}
+            >
+              {googleLoading ? (
+                <ActivityIndicator size="small" color={colors.text.secondary} />
+              ) : (
+                <Ionicons name="logo-google" size={18} color="#4285F4" />
+              )}
+              <Text style={styles.googleBtnText}>Continue with Google</Text>
+            </TouchableOpacity>
+
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
               <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
@@ -137,4 +177,25 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.md },
   footerText: { fontSize: typography.size.sm, color: colors.text.secondary },
   footerLink: { fontSize: typography.size.sm, color: colors.green[600], fontWeight: typography.weight.semibold },
+
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.xs },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.gray[200] },
+  dividerText: { fontSize: typography.size.sm, color: colors.text.tertiary },
+
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: 52,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.gray[200],
+    backgroundColor: colors.white,
+  },
+  googleBtnText: {
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.primary,
+  },
 });

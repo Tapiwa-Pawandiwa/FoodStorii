@@ -3,6 +3,11 @@
 
 import type { ChatResponse, HouseholdProfile, InventorySnapshot, RecipeSuggestion } from '@foodstorii/shared';
 import { supabaseClient } from './supabaseClient';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+
+// Required for the OAuth browser session to close cleanly on iOS
+WebBrowser.maybeCompleteAuthSession();
 
 // ---- FastAPI Agent Service (Tina streaming chat) ----------------------------
 
@@ -167,6 +172,30 @@ export async function signIn(
     userId,
     householdId: (userRow?.household_id as string) ?? null,
   };
+}
+
+export async function signInWithGoogle(): Promise<void> {
+  const redirectTo = makeRedirectUri({ scheme: 'foodstorii' });
+
+  const { data, error } = await supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+    },
+  });
+
+  if (error || !data.url) throw new Error(error?.message ?? 'Google sign-in unavailable');
+
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+  if (result.type === 'success') {
+    const { error: sessionError } = await supabaseClient.auth.exchangeCodeForSession(result.url);
+    if (sessionError) throw new Error(sessionError.message);
+    // _layout.tsx SIGNED_IN handler picks up the session, reads household_id, and routes
+  } else if (result.type !== 'cancel') {
+    throw new Error('Google sign-in failed');
+  }
 }
 
 export async function forgotPassword(email: string): Promise<void> {

@@ -7,15 +7,17 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { FoodStoriiWordmark } from '../../src/components/common/FoodStoriiWordmark';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/common/Button';
 import { TextInput } from '../../src/components/common/TextInput';
 import { useAuthStore } from '../../src/stores/auth.store';
 import * as api from '../../src/services/api';
-import { colors, spacing, typography } from '../../src/theme';
+import { colors, spacing, typography, radius } from '../../src/theme';
 import { usePostHog } from 'posthog-react-native';
 
 export default function SignUpScreen() {
@@ -28,6 +30,22 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
 
   const [confirmed, setConfirmed] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleSignUp = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      await api.signInWithGoogle();
+      posthog.capture('user_signed_up', { method: 'google' });
+      // _layout.tsx SIGNED_IN handler routes to onboarding
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
+      if (msg !== 'Sign-in cancelled') setError(msg);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSignUp = async () => {
     if (!name.trim() || !email.trim() || !password) return;
@@ -154,6 +172,28 @@ export default function SignUpScreen() {
             <Text style={styles.terms}>
               By signing up you agree to FoodStorii's terms of use and privacy policy.
             </Text>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google sign-up */}
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={handleGoogleSignUp}
+              disabled={googleLoading}
+              activeOpacity={0.85}
+            >
+              {googleLoading ? (
+                <ActivityIndicator size="small" color={colors.text.secondary} />
+              ) : (
+                <Ionicons name="logo-google" size={18} color="#4285F4" />
+              )}
+              <Text style={styles.googleBtnText}>Continue with Google</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -178,4 +218,25 @@ const styles = StyleSheet.create({
   confirmTitle: { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: colors.text.primary },
   confirmBody: { fontSize: typography.size.base, color: colors.text.secondary, lineHeight: typography.size.base * 1.6 },
   confirmEmail: { fontWeight: typography.weight.semibold, color: colors.text.primary },
+
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.xs },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.gray[200] },
+  dividerText: { fontSize: typography.size.sm, color: colors.text.tertiary },
+
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: 52,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.gray[200],
+    backgroundColor: colors.white,
+  },
+  googleBtnText: {
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.primary,
+  },
 });
