@@ -187,13 +187,31 @@ export default function ChatScreen() {
     <SafeAreaView style={S.safe} edges={['top']}>
       {/* Header */}
       <View style={S.header}>
-        <View style={S.headerAvatar}>
-          <Text style={S.headerAvatarText}>T</Text>
+        <View style={S.headerLeft}>
+          <View style={S.headerAvatar}>
+            <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+          </View>
+          <View>
+            <Text style={S.headerName}>Tina</Text>
+            <Text style={S.headerSub}>YOUR KITCHEN AI</Text>
+          </View>
         </View>
-        <View>
-          <Text style={S.headerName}>Tina</Text>
-          <Text style={S.headerSub}>Your kitchen assistant</Text>
-        </View>
+        <TouchableOpacity
+          onPress={() => {
+            // Clear thread to start new conversation
+            if (householdId) {
+              const key = `fs_thread_id_${householdId}`;
+              AsyncStorage.removeItem(key).then(() =>
+                getOrCreateThreadId(householdId).then(setThreadId)
+              );
+            }
+            setMessages([WELCOME]);
+            setQuickReplies([]);
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={S.newThread}>New thread +</Text>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -253,26 +271,25 @@ const S = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
     backgroundColor: colors.white,
-    ...shadows.sm,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   headerAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.brand.green,
+    backgroundColor: colors.brand.dark,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerAvatarText: {
-    color: colors.white,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.bold,
   },
   headerName: {
     fontSize: typography.size.base,
@@ -280,8 +297,16 @@ const S = StyleSheet.create({
     color: colors.text.primary,
   },
   headerSub: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
+    fontSize: 10,
+    fontWeight: typography.weight.medium,
+    color: colors.brand.green,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  newThread: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    fontWeight: typography.weight.medium,
   },
 
   // List
@@ -326,12 +351,13 @@ const S = StyleSheet.create({
   },
   bubbleAssistant: {
     backgroundColor: colors.white,
-    borderBottomLeftRadius: radius.sm,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.gray[100],
+    borderTopLeftRadius: radius.sm,
   },
   bubbleUser: {
-    backgroundColor: colors.brand.green,
-    borderBottomRightRadius: radius.sm,
+    backgroundColor: colors.brand.dark,
+    borderTopRightRadius: radius.sm,
   },
   bubbleError: {
     backgroundColor: colors.red[50],
@@ -344,7 +370,7 @@ const S = StyleSheet.create({
     lineHeight: typography.size.base * 1.45,
   },
   bubbleTextUser: {
-    color: colors.white,
+    color: colors.cream,
   },
   cursor: {
     color: colors.brand.green,

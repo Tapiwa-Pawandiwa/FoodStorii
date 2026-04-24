@@ -1,68 +1,71 @@
-// ── FoodStorii Design System ─────────────────────────────────────────────────
+// ── FoodStorii Design System — Section 20 ─────────────────────────────────────
 // COLOR ROLES
-//   bg           → primary app background (warm beige)
+//   bg           → #F7F0F0 warm cream background
 //   white        → cards and elevated surfaces
-//   brand.orange → primary CTA buttons
-//   brand.yellow → badges, highlights
-//   brand.blue   → empty states, informational
-//   green.*      → icons, success states, small accents ONLY
+//   brand.green  → #48A111 vivid green — CTAs, active states, Tina button — always
+//   brand.dark   → #25671E dark green — brand headers, dark surfaces, secondary buttons
+//   brand.amber  → #FFAA00 expiry, urgency
 //   text.*       → typography hierarchy
 
 export const colors = {
   // === BRAND PALETTE ===
   brand: {
-    orange: '#f9a620',    // Primary CTA
-    yellow: '#ffd449',    // Badges, highlights
-    blue: '#a8d5e2',      // Empty states, info
-    green: '#548c2f',     // Icon accent, success
-    darkGreen: '#104911', // Deep green accent
+    green: '#48A111',    // Primary CTA, Tina button, active states — vivid green
+    dark: '#25671E',     // Headers, dark buttons, secondary borders — dark green
+    amber: '#FFAA00',    // Expiry, urgency
+    amberTint: '#FFF4D6', // Expiry card backgrounds
+    // Legacy aliases kept for backward compat
+    orange: '#48A111',   // maps to primary green
+    yellow: '#FFAA00',   // maps to amber
+    blue: '#48A111',     // maps to primary green
+    darkGreen: '#25671E',
   },
 
   // === SURFACE ===
-  bg: '#FFFFFF',          // Primary background
+  bg: '#F7F0F0',          // Primary background — warm cream
   white: '#FFFFFF',
+  cream: '#F7F0F0',       // Same as bg, named alias
 
   // === TYPOGRAPHY ===
   text: {
-    primary: '#0F0F0F',
-    secondary: '#6B6B6B',
-    tertiary: '#A0A0A0',
-    inverse: '#FFFFFF',
+    primary: '#1A1A18',   // Near black
+    secondary: '#5A5A52', // Warm grey
+    tertiary: '#C4BEB8',  // Faint warm grey
+    inverse: '#F7F0F0',   // On dark green surfaces
   },
 
-  // === GREEN (accent use only — icons, success, small highlights) ===
+  // === GREEN SCALE ===
   green: {
-    50: '#f2f9ed',
-    100: '#d9f0c8',
-    200: '#b3e090',
-    300: '#86c962',
-    400: '#6aaf40',
-    500: '#548c2f',
-    600: '#548c2f',
-    700: '#104911',
-    800: '#0c3610',
+    50: '#F0F8EC',        // Tinted background (selected chips, success backgrounds)
+    100: '#D4EDCA',
+    200: '#A8DB95',
+    300: '#7CC860',
+    400: '#5CB83A',
+    500: '#48A111',       // = brand.green
+    600: '#25671E',       // = brand.dark
+    700: '#1A4A15',
+    800: '#102E0D',
   },
 
-  // === NEUTRALS ===
+  // === NEUTRALS / BORDERS ===
   gray: {
-    50: '#F8F8F8',
-    100: '#EEEBE4',
-    200: '#E0DDD6',
-    300: '#C8C5BE',
-    400: '#A0A0A0',
-    500: '#6B6B6B',
-    600: '#4A4A4A',
-    700: '#2E2E2E',
-    800: '#1A1A1A',
-    900: '#0F0F0F',
+    50: '#F7F0F0',        // = bg
+    100: '#EAE4E4',       // Borders, dividers
+    200: '#D4CECE',
+    300: '#C4BEB8',       // = text.tertiary
+    400: '#5A5A52',       // = text.secondary
+    500: '#3A3A32',
+    600: '#2A2A22',
+    700: '#1A1A18',       // = text.primary
+    800: '#0F0F0E',
   },
 
   // === STATUS ===
   amber: {
-    50: '#fff8f0',
-    100: '#ffe8c0',
-    500: '#f9a620',
-    600: '#e09010',
+    50: '#FFF4D6',        // = brand.amberTint
+    100: '#FFE5A0',
+    500: '#FFAA00',       // = brand.amber
+    600: '#E09000',
   },
   red: {
     50: '#fef2f2',
@@ -159,6 +162,7 @@ export const shadows = {
 };
 
 // ── Tab bar ──────────────────────────────────────────────────────────────────
-// Floating pill offset — add to screen scroll contentContainerStyle.paddingBottom
+// Floating pill: 64px bar + 16px bottom margin + 14px Tina elevation + safe area
+// Add to screen scroll contentContainerStyle.paddingBottom
 
-export const TAB_BAR_BOTTOM_PADDING = 120;
+export const TAB_BAR_BOTTOM_PADDING = 110;

@@ -7,18 +7,14 @@ import {
   TouchableOpacity,
   Dimensions,
   ImageBackground,
-  Image,
   StatusBar,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../src/stores/auth.store';
-import { colors, spacing, typography, radius } from '../../src/theme';
 
 const { width: W, height: H } = Dimensions.get('window');
 
-// ── Assets ───────────────────────────────────────────────────────────────────
-
-const LOGO = require('../../assets/FOODSTORII.png');
+// ── Slides ────────────────────────────────────────────────────────────────────
 
 const SLIDES = [
   {
@@ -39,54 +35,23 @@ const SLIDES = [
     headline: 'Eat better,\nWaste less',
     body: "Reduce food waste by up to 70% with Tina's help",
   },
+  {
+    key: '4',
+    image: require('../../assets/onboarding/green_salad.jpg'),
+    headline: 'Cook together\nas a household',
+    body: 'Plan meals, share shopping lists, and reduce waste as a team.',
+  },
 ];
 
-// ── Splash screen ─────────────────────────────────────────────────────────────
-
-function Splash({ onGetStarted, onSignIn }: { onGetStarted: () => void; onSignIn: () => void }) {
-  return (
-    <ImageBackground
-      source={require('../../assets/onboarding/green_salad.jpg')}
-      style={S.fullScreen}
-      resizeMode="cover"
-    >
-      <StatusBar barStyle="light-content" />
-
-      {/* Dark overlay */}
-      <View style={S.overlay} />
-
-      {/* Logo centred */}
-      <View style={S.splashLogoWrap}>
-        <Image source={LOGO} style={S.splashLogo} resizeMode="contain" />
-      </View>
-
-      {/* Bottom content */}
-      <View style={S.splashBottom}>
-        <Text style={S.splashHeadline}>Your kitchen.{'\n'}Actually organised.</Text>
-        <Text style={S.splashSub}>Save money, waste less, eat better.</Text>
-
-        <TouchableOpacity style={S.primaryBtn} onPress={onGetStarted} activeOpacity={0.88}>
-          <Text style={S.primaryBtnText}>Get Started</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={onSignIn} activeOpacity={0.7} hitSlop={{ top: 12, bottom: 12, left: 24, right: 24 }}>
-          <Text style={S.signInLink}>Already have an account? <Text style={S.signInLinkBold}>Sign in</Text></Text>
-        </TouchableOpacity>
-      </View>
-    </ImageBackground>
-  );
-}
-
-// ── Feature slides ────────────────────────────────────────────────────────────
-
-function Slides({ onDone }: { onDone: () => void }) {
+export default function SlidesScreen() {
+  const { markSlidesSeen } = useAuthStore();
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
   const isLast = index === SLIDES.length - 1;
 
   function handleNext() {
     if (isLast) {
-      onDone();
+      goToGoals();
     } else {
       const next = index + 1;
       listRef.current?.scrollToIndex({ index: next, animated: true });
@@ -99,10 +64,16 @@ function Slides({ onDone }: { onDone: () => void }) {
     setIndex(i);
   }
 
+  async function goToGoals() {
+    await markSlidesSeen();
+    router.replace('/(onboarding)/goals');
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View style={S.root}>
       <StatusBar barStyle="light-content" />
 
+      {/* Full-screen photo slides */}
       <FlatList
         ref={listRef}
         data={SLIDES}
@@ -113,21 +84,17 @@ function Slides({ onDone }: { onDone: () => void }) {
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onMomentumScrollEnd}
         renderItem={({ item }) => (
-          <ImageBackground source={item.image} style={S.slide} resizeMode="cover">
-            {/* Gradient overlay */}
-            <View style={S.slideOverlayTop} />
-            <View style={S.slideOverlayBottom} />
-          </ImageBackground>
+          <ImageBackground source={item.image} style={S.slide} resizeMode="cover" />
         )}
       />
 
-      {/* Text overlay — rendered outside FlatList so it stays fixed */}
-      <View style={S.slideTextBlock} pointerEvents="none">
-        <Text style={S.slideHeadline}>{SLIDES[index].headline}</Text>
-        <Text style={S.slideBody}>{SLIDES[index].body}</Text>
+      {/* Text overlay — fixed position, bottom-left */}
+      <View style={S.textBlock} pointerEvents="none">
+        <Text style={S.headline}>{SLIDES[index].headline}</Text>
+        <Text style={S.body}>{SLIDES[index].body}</Text>
       </View>
 
-      {/* Dots */}
+      {/* Progress dots */}
       <View style={S.dots} pointerEvents="none">
         {SLIDES.map((_, i) => (
           <View key={i} style={[S.dot, i === index ? S.dotActive : S.dotInactive]} />
@@ -135,127 +102,50 @@ function Slides({ onDone }: { onDone: () => void }) {
       </View>
 
       {/* Button */}
-      <View style={S.slideFooter}>
-        <TouchableOpacity style={S.primaryBtn} onPress={handleNext} activeOpacity={0.88}>
-          <Text style={S.primaryBtnText}>{isLast ? 'Get Started' : 'Next'}</Text>
+      <View style={S.footer}>
+        <TouchableOpacity style={S.btn} onPress={handleNext} activeOpacity={0.88}>
+          <Text style={S.btnText}>{isLast ? 'Get Started' : 'Next'}</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// ── Root ──────────────────────────────────────────────────────────────────────
-
-export default function SlidesScreen() {
-  const { markSlidesSeen } = useAuthStore();
-  const [phase, setPhase] = useState<'splash' | 'slides'>('splash');
-
-  async function goToSignUp() {
-    await markSlidesSeen();
-    router.replace('/(auth)/signup');
-  }
-
-  async function goToSignIn() {
-    await markSlidesSeen();
-    router.replace('/(auth)/signin');
-  }
-
-  if (phase === 'splash') {
-    return (
-      <Splash
-        onGetStarted={() => setPhase('slides')}
-        onSignIn={goToSignIn}
-      />
-    );
-  }
-
-  return <Slides onDone={goToSignUp} />;
-}
-
-// ── Styles ───────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const S = StyleSheet.create({
-  fullScreen: { flex: 1, width: W, height: H },
+  root: { flex: 1, backgroundColor: '#000' },
 
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.38)',
-  },
+  slide: { width: W, height: H },
 
-  // Splash
-  splashLogoWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    marginTop: 60,
+  textBlock: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 210,
   },
-  splashLogo: {
-    width: 280,
-    height: 80,
+  headline: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 38,
+    marginBottom: 10,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  splashBottom: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: 56,
-    gap: spacing.md,
-  },
-  splashHeadline: {
-    fontSize: typography.size['3xl'],
-    fontWeight: typography.weight.extrabold,
-    color: colors.white,
-    lineHeight: typography.size['3xl'] * 1.2,
-    marginBottom: spacing.xs,
-  },
-  splashSub: {
-    fontSize: typography.size.base,
-    color: 'rgba(255,255,255,0.75)',
-    lineHeight: typography.size.base * 1.5,
-    marginBottom: spacing.sm,
+  body: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 22,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 
-  // Slides
-  slide: {
-    width: W,
-    height: H,
-  },
-  slideOverlayTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '35%',
-    backgroundColor: 'rgba(0,0,0,0.15)',
-  },
-  slideOverlayBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '55%',
-    backgroundColor: 'rgba(0,0,0,0.72)',
-  },
-  slideTextBlock: {
-    position: 'absolute',
-    left: spacing.xl,
-    right: spacing.xl,
-    bottom: 220,
-    gap: spacing.sm,
-  },
-  slideHeadline: {
-    fontSize: typography.size['3xl'],
-    fontWeight: typography.weight.extrabold,
-    color: colors.white,
-    lineHeight: typography.size['3xl'] * 1.2,
-  },
-  slideBody: {
-    fontSize: typography.size.base,
-    color: 'rgba(255,255,255,0.8)',
-    lineHeight: typography.size.base * 1.55,
-    marginTop: spacing.xs,
-  },
   dots: {
     position: 'absolute',
-    bottom: 175,
+    bottom: 162,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -263,37 +153,26 @@ const S = StyleSheet.create({
     gap: 6,
   },
   dot: { height: 6, borderRadius: 3 },
-  dotActive: { width: 22, backgroundColor: colors.white },
-  dotInactive: { width: 6, backgroundColor: 'rgba(255,255,255,0.4)' },
-  slideFooter: {
+  dotActive: { width: 22, backgroundColor: '#FFFFFF' },
+  dotInactive: { width: 6, backgroundColor: 'rgba(255,255,255,0.45)' },
+
+  footer: {
     position: 'absolute',
     bottom: 56,
-    left: spacing.xl,
-    right: spacing.xl,
+    left: 24,
+    right: 24,
   },
-
-  // Shared button
-  primaryBtn: {
-    backgroundColor: colors.brand.green,
-    borderRadius: radius.lg,
-    height: 54,
+  btn: {
+    backgroundColor: '#48A111',
+    borderRadius: 999,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryBtnText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
-    color: colors.white,
+  btnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
     letterSpacing: 0.3,
-  },
-  signInLink: {
-    fontSize: typography.size.sm,
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  signInLinkBold: {
-    color: colors.white,
-    fontWeight: typography.weight.semibold,
   },
 });

@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabaseClient } from '../../src/services/supabaseClient';
 import { useAuthStore } from '../../src/stores/auth.store';
-import { colors, spacing, radius, typography } from '../../src/theme';
+import { colors, spacing, radius, typography, TAB_BAR_BOTTOM_PADDING } from '../../src/theme';
 import { ShoppingListItemStatus } from '@foodstorii/shared';
 import { usePostHog } from 'posthog-react-native';
 
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   newListText: { fontSize: typography.size.sm, color: colors.white, fontWeight: typography.weight.semibold },
-  listContent: { padding: spacing.base, paddingBottom: spacing['2xl'] },
+  listContent: { padding: spacing.base, paddingBottom: TAB_BAR_BOTTOM_PADDING },
   listCard: {
     backgroundColor: colors.white,
     borderRadius: radius.lg,

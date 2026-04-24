@@ -97,15 +97,14 @@ export default function RootLayout() {
         if (!session) {
           console.log('[Auth] stored token found but Supabase session invalid — signing out');
           await signOut();
-          router.replace('/(auth)/signin');
+          router.replace('/(welcome)/splash');
           return;
         }
         console.log('[Auth] session valid | onboarding:', hasCompletedOnboarding);
-        router.replace(hasCompletedOnboarding ? '/(tabs)' : '/(onboarding)/intro');
-      } else if (!hasSeenSlides) {
-        router.replace('/(welcome)/slides');
+        router.replace(hasCompletedOnboarding ? '/(tabs)' : '/(onboarding)/goals');
       } else {
-        router.replace('/(auth)/signin');
+        // Unauthenticated — always start at splash
+        router.replace('/(welcome)/splash');
       }
     }
 
@@ -117,7 +116,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (!initialRouteHandled.current) return; // ignore before initial route is set
     if (!accessToken) {
-      router.replace('/(auth)/signin');
+      router.replace('/(welcome)/splash');
     }
   }, [accessToken]);
 

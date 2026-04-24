@@ -30,7 +30,7 @@ export function Button({ label, onPress, variant = 'primary', loading, disabled,
       style={[styles.base, styles[variant], isDisabled && styles.disabled, style]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? colors.white : colors.green[600]} size="small" />
+        <ActivityIndicator color={variant === 'primary' ? colors.white : colors.brand.green} size="small" />
       ) : (
         <Text style={[styles.label, styles[`${variant}Label`], textStyle]}>{label}</Text>
       )}
@@ -41,18 +41,18 @@ export function Button({ label, onPress, variant = 'primary', loading, disabled,
 const styles = StyleSheet.create({
   base: {
     height: 52,
-    borderRadius: radius.lg,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
   },
   primary: {
-    backgroundColor: colors.green[600],
+    backgroundColor: colors.brand.green,
   },
   secondary: {
-    backgroundColor: colors.green[50],
+    backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: colors.green[200],
+    borderColor: colors.brand.dark,
   },
   ghost: {
     backgroundColor: 'transparent',
@@ -68,9 +68,9 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   secondaryLabel: {
-    color: colors.green[700],
+    color: colors.brand.dark,
   },
   ghostLabel: {
-    color: colors.green[600],
+    color: colors.brand.green,
   },
 });
