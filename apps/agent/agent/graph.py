@@ -1,17 +1,14 @@
-from langchain_anthropic import ChatAnthropic
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint.memory import MemorySaver
 from agent.state import AgentState
 from agent.nodes import idle, profiling, inventory, recipe, shopping, meal_plan, cook_confirm, proactive
 from agent.edges import route_from_idle, should_continue
-from config import settings
 
 # NOTE: llm is defined in agent/llm.py to avoid circular imports.
 # graph.py re-exports it so existing imports from agent.graph still work.
 from agent.llm import llm  # noqa: F401
 
 # Lazy-initialised — set during startup via init_graph(), not at import time.
-# This prevents crashes if SUPABASE_DB_URL is unavailable when the module loads.
 graph = None
 
 
@@ -52,8 +49,12 @@ def build_graph():
 
 
 def init_graph():
-    """Called during FastAPI startup — safe to connect to Postgres here."""
+    """
+    Called during FastAPI startup.
+    Using MemorySaver for now — conversations persist per-process only.
+    Replace with AsyncPostgresSaver once the service is stable.
+    """
     global graph
-    checkpointer = PostgresSaver.from_conn_string(settings.supabase_db_url)
+    checkpointer = MemorySaver()
     workflow = build_graph()
     graph = workflow.compile(checkpointer=checkpointer)
