@@ -6,7 +6,7 @@ Runs the proactive node for a specific household.
 import structlog
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from agent.graph import graph
+from agent.graph import get_graph
 from context.builder import build_context
 from skills.registry import STATE_ALLOWED_TOOLS
 
@@ -52,7 +52,7 @@ async def trigger_proactive(request: ProactiveRequest):
         }
 
         config = {"configurable": {"thread_id": f"proactive-{request.household_id}"}}
-        result = await graph.ainvoke(graph_input, config=config)
+        result = await get_graph().ainvoke(graph_input, config=config)
 
         messages = result.get("messages", [])
         last = messages[-1] if messages else None

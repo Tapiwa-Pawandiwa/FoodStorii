@@ -58,3 +58,8 @@ def init_graph():
     checkpointer = MemorySaver()
     workflow = build_graph()
     graph = workflow.compile(checkpointer=checkpointer)
+
+
+def get_graph():
+    """Return the compiled graph. Always call this rather than importing `graph` directly."""
+    return graph

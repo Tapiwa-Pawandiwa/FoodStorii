@@ -24,7 +24,7 @@ async def build_context(household_id: str, user_id: str, mode: str, thread_id: s
         get_household_profile(household_id),
         get_inventory_snapshot(household_id),
         get_household_members(household_id),
-        get_thread_summary(thread_id) if thread_id else asyncio.coroutine(lambda: None)(),
+        get_thread_summary(thread_id) if thread_id else asyncio.sleep(0),
         get_recent_cooks(household_id, limit=5),
         get_behaviour_signals(household_id, days=30),
         get_dietary_preferences(household_id),

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import json
-from agent.graph import graph
+from agent.graph import get_graph
 from context.builder import build_context
 from session.manager import load_thread, add_message
 from skills.registry import STATE_ALLOWED_TOOLS
@@ -58,7 +58,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
         message_type = "text_bubble"
 
         try:
-            async for event in graph.astream_events(graph_input, config=config, version="v2"):
+            async for event in get_graph().astream_events(graph_input, config=config, version="v2"):
                 etype = event["event"]
 
                 if etype == "on_chat_model_stream":
