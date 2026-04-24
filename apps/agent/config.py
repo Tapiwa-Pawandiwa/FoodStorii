@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     langchain_project: str = "foodstoraii-tina-prod"
     langchain_endpoint: str = "https://api.smith.langchain.com"
     supabase_url: str
-    supabase_service_role_key: str
+    supabase_secret_key: str              # Railway var: SUPABASE_SECRET_KEY
     supabase_db_url: str
     redis_url: str                        # Railway Redis — auto-injected
     internal_secret: str

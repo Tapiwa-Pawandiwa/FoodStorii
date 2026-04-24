@@ -7,7 +7,7 @@ async def init_supabase():
     global _client
     _client = await create_async_client(
         settings.supabase_url,
-        settings.supabase_service_role_key,
+        settings.supabase_secret_key,
     )
 
 def get_supabase() -> AsyncClient:
