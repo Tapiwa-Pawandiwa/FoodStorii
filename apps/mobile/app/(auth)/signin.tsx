@@ -155,6 +155,18 @@ export default function SignInScreen() {
                 <Text style={styles.footerLink}>Sign up</Text>
               </TouchableOpacity>
             </View>
+
+            {__DEV__ && (
+              <TouchableOpacity
+                onPress={async () => {
+                  await useAuthStore.getState().resetOnboarding();
+                  router.replace('/(welcome)/slides');
+                }}
+                style={styles.devReset}
+              >
+                <Text style={styles.devResetText}>⚙ Reset welcome flow</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -198,4 +210,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
   },
+  devReset: { alignItems: 'center', marginTop: spacing.xl },
+  devResetText: { fontSize: typography.size.xs, color: colors.text.tertiary },
 });
