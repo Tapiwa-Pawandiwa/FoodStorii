@@ -495,10 +495,7 @@ export default function OnboardingIntroScreen() {
           onboardingStatus: OnboardingStatus.in_progress,
         }),
         allSelected.length > 0
-          ? api.sendMessage({
-              message: `__wizard_inventory__:${allSelected.join(',')}`,
-              mode: 'onboarding' as import('@foodstorii/shared').ConversationMode,
-            }).catch(() => null)
+          ? api.addInventoryItems(allSelected.map((name) => ({ name }))).catch(() => null)
           : Promise.resolve(),
       ]);
 
