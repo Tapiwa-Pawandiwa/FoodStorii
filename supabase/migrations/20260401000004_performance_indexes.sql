@@ -1,9 +1,14 @@
 -- Migration 007: Performance indexes and pgvector semantic memory table
 -- Run AFTER migrations 003-006.
 
--- Critical composite index for all inventory queries
-CREATE INDEX IF NOT EXISTS idx_inventory_household_location_expiry
-    ON inventory_items(household_id, storage_location, expiry_date)
+-- Inventory expiry index — uses expiry_estimate (actual column name) and
+-- storage_location (added in migration 006)
+CREATE INDEX IF NOT EXISTS idx_inventory_household_expiry
+    ON inventory_items(household_id, expiry_estimate)
+    WHERE status = 'available';
+
+CREATE INDEX IF NOT EXISTS idx_inventory_household_location
+    ON inventory_items(household_id, storage_location)
     WHERE status = 'available';
 
 -- Thread lookup
@@ -23,13 +28,19 @@ CREATE TABLE IF NOT EXISTS embeddings_index (
 
 ALTER TABLE embeddings_index ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "embeddings_index_member" ON embeddings_index
-    FOR ALL TO authenticated
-    USING (household_id IN (SELECT household_id FROM users WHERE id = auth.uid()))
-    WITH CHECK (household_id IN (SELECT household_id FROM users WHERE id = auth.uid()));
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public'
+      AND tablename = 'embeddings_index' AND policyname = 'embeddings_index_member'
+  ) THEN
+    CREATE POLICY "embeddings_index_member" ON embeddings_index
+      FOR ALL TO authenticated
+      USING (household_id IN (SELECT household_id FROM users WHERE id = auth.uid()))
+      WITH CHECK (household_id IN (SELECT household_id FROM users WHERE id = auth.uid()));
+  END IF;
+END $$;
 
 -- HNSW index for pgvector semantic memory — requires pgvector extension
--- The extension must already be enabled (done in migration 001)
 CREATE INDEX IF NOT EXISTS idx_embeddings_hnsw
     ON embeddings_index USING hnsw (embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64);
