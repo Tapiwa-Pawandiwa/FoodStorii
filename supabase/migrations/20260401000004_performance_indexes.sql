@@ -7,10 +7,6 @@ CREATE INDEX IF NOT EXISTS idx_inventory_household_expiry
     ON inventory_items(household_id, expiry_estimate)
     WHERE status = 'available';
 
-CREATE INDEX IF NOT EXISTS idx_inventory_household_location
-    ON inventory_items(household_id, storage_location)
-    WHERE status = 'available';
-
 -- Thread lookup
 CREATE INDEX IF NOT EXISTS idx_threads_household_status
     ON conversation_threads(household_id, status);
