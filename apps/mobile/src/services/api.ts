@@ -1,9 +1,57 @@
-// API service — all calls go to Supabase Edge Functions or the Supabase JS client directly.
-// There is no Express server. No API keys are stored in this app — only the anon key,
-// which is a public key designed to be embedded in client applications.
+// API service — calls go to Supabase Edge Functions, the Supabase JS client, or the FastAPI agent service.
+// No API keys are stored in this app — only the anon key (public) and the agent service URL (public).
 
 import type { ChatResponse, HouseholdProfile, InventorySnapshot, RecipeSuggestion } from '@foodstorii/shared';
 import { supabaseClient } from './supabaseClient';
+
+// ---- FastAPI Agent Service (Tina streaming chat) ----------------------------
+
+const AGENT_SERVICE_URL = process.env.EXPO_PUBLIC_AGENT_SERVICE_URL
+
+export async function* streamTinaChat(
+  message: string,
+  threadId: string,
+  householdId: string,
+  accessToken: string
+) {
+  const response = await fetch(`${AGENT_SERVICE_URL}/chat/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      message,
+      thread_id: threadId,
+      household_id: householdId,
+    }),
+  })
+
+  if (!response.ok) throw new Error(`Agent service error: ${response.status}`)
+
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    const chunk = decoder.decode(value)
+    const lines = chunk.split('\n\n').filter(l => l.startsWith('data:'))
+    for (const line of lines) {
+      try {
+        const data = JSON.parse(line.replace('data: ', ''))
+        yield data
+      } catch {}
+    }
+  }
+}
+
+// Stream event types:
+// { type: 'token', content: string }        → append to message bubble
+// { type: 'tool_start', tool: string }      → show "thinking..." indicator
+// { type: 'tool_end', tool: string }        → hide indicator
+// { type: 'done', message_type, quick_replies } → render chips, finalise
+// { type: 'error', content: string }        → show error with retry button
 
 // ---- Internal helper -------------------------------------------------------
 // Uses supabaseClient.functions.invoke() so the SDK handles authentication

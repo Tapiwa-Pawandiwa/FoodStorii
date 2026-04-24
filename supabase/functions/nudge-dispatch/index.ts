@@ -1,9 +1,9 @@
 // Edge Function: nudge-dispatch
-// Fetches pending nudge_candidates and delivers them via the Expo push API.
+// Phase 1: Generates proactive Tina messages via the FastAPI agent service (/internal/proactive).
+// Phase 2: Delivers the generated messages via Expo push API.
 // Called by a pg_cron job every 15 minutes.
 //
 // Authentication: caller must present INTERNAL_CRON_SECRET as a Bearer token.
-// This prevents public calls.
 //
 // pg_cron setup (run in Supabase SQL editor):
 //   SELECT cron.schedule(
@@ -20,6 +20,28 @@
 //   );
 
 import { createInternalClient, json, CORS_HEADERS } from '../_shared/client.ts';
+
+const AGENT_SERVICE_URL = Deno.env.get('AGENT_SERVICE_URL');   // Railway FastAPI URL
+const INTERNAL_SECRET = Deno.env.get('INTERNAL_SECRET');       // Shared with FastAPI
+
+async function generateProactiveMessage(householdId: string, nudgeType: string): Promise<string | null> {
+  if (!AGENT_SERVICE_URL || !INTERNAL_SECRET) return null;
+  try {
+    const res = await fetch(`${AGENT_SERVICE_URL}/internal/proactive`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${INTERNAL_SECRET}`,
+      },
+      body: JSON.stringify({ household_id: householdId, nudge_type: nudgeType }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.content ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const NudgeStatus = { pending: 'pending', sent: 'sent' } as const;
 
