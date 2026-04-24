@@ -259,11 +259,14 @@ export async function getInventorySnapshot(): Promise<InventorySnapshot> {
 export async function addInventoryItems(
   items: { name: string; quantity?: number; unit?: string; category?: string }[],
 ): Promise<void> {
-  // Route through Tina with a structured message so it uses the add_inventory_items tool
-  await sendMessage({
-    message: `__add_items__:${items.map((i) => `${i.quantity ? i.quantity + ' ' : ''}${i.unit ? i.unit + ' ' : ''}${i.name}`).join(', ')}`,
-    mode: 'inventory',
-  });
+  const rows = items.map((i) => ({
+    name: i.name,
+    category: i.category ?? null,
+    quantity: i.quantity ?? null,
+    unit: i.unit ?? null,
+    sourceType: 'manual',
+  }));
+  await callFunction<void>('inventory/items', { method: 'POST', body: { items: rows } });
 }
 
 // ---- Recipes ---------------------------------------------------------------
