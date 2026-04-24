@@ -18,7 +18,7 @@ const { width: W, height: H } = Dimensions.get('window');
 
 // ── Assets ───────────────────────────────────────────────────────────────────
 
-const LOGO = require('../../assets/FoodStoriiLogo.png');
+const LOGO = require('../../assets/FOODSTORII.png');
 
 const SLIDES = [
   {
@@ -58,7 +58,6 @@ function Splash({ onGetStarted, onSignIn }: { onGetStarted: () => void; onSignIn
       {/* Logo centred */}
       <View style={S.splashLogoWrap}>
         <Image source={LOGO} style={S.splashLogo} resizeMode="contain" />
-        <Text style={S.splashBrand}>FOODSTORIII</Text>
       </View>
 
       {/* Bottom content */}
@@ -192,14 +191,8 @@ const S = StyleSheet.create({
     marginTop: 60,
   },
   splashLogo: {
-    width: 72,
-    height: 72,
-  },
-  splashBrand: {
-    fontSize: typography.size['2xl'],
-    fontWeight: typography.weight.extrabold,
-    color: colors.white,
-    letterSpacing: 3,
+    width: 280,
+    height: 80,
   },
   splashBottom: {
     paddingHorizontal: spacing.xl,
