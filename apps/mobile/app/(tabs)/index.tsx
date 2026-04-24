@@ -140,7 +140,7 @@ const QUICK_ACTIONS = [
   { icon: 'basket-outline' as const,            label: 'Pantry',   route: '/(tabs)/inventory' as const, iconColor: colors.brand.green },
   { icon: 'restaurant-outline' as const,        label: 'Recipes',  route: '/(tabs)/recipes' as const,   iconColor: colors.brand.orange },
   { icon: 'cart-outline' as const,              label: 'Shopping', route: '/(tabs)/shopping' as const,  iconColor: colors.brand.blue },
-  { icon: 'chatbubble-ellipses-outline' as const, label: 'Ask Tina', route: '/(tabs)/index' as const,  iconColor: colors.brand.yellow },
+  { icon: 'chatbubble-ellipses-outline' as const, label: 'Ask Tina', route: '/(tabs)/chat' as const,  iconColor: colors.brand.yellow },
 ] as const;
 
 // ── Main screen ──────────────────────────────────────────────────────────────
