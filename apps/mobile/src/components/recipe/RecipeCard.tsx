@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import type { RecipeSuggestion } from '@foodstorii/shared';
-import { Chip } from '../common/Chip';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, typography, shadows } from '../../theme';
 
 interface RecipeCardProps {
@@ -10,148 +10,109 @@ interface RecipeCardProps {
 }
 
 export function RecipeCard({ suggestion, onPress }: RecipeCardProps) {
-  const { recipe, canMakeNow, missingIngredients, availableIngredients, fitReason } = suggestion;
-  const totalTime = (recipe.prepTimeMinutes ?? 0) + (recipe.cookTimeMinutes ?? 0);
+  const { title, imageUrl, readyInMinutes, nutrition, canMakeNow, missingIngredients, cuisineType } = suggestion;
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.card, shadows.sm]}>
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={2}>{recipe.title}</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={[styles.card, shadows.md]}>
+      {/* Food image */}
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+      ) : (
+        <View style={styles.imagePlaceholder}>
+          <Ionicons name="restaurant-outline" size={28} color={colors.gray[300]} />
         </View>
-        <View style={styles.statusBadge}>
-          {canMakeNow ? (
-            <View style={styles.canMake}>
-              <Text style={styles.canMakeText}>✓ Ready</Text>
+      )}
+
+      {/* Ready badge — floats over image */}
+      <View style={[styles.badge, canMakeNow ? styles.badgeReady : styles.badgeMissing]}>
+        <Text style={[styles.badgeText, canMakeNow ? styles.badgeTextReady : styles.badgeTextMissing]}>
+          {canMakeNow ? '✓ Ready' : `+${missingIngredients.length} missing`}
+        </Text>
+      </View>
+
+      {/* Content */}
+      <View style={styles.content}>
+        <Text style={styles.title} numberOfLines={2}>{title}</Text>
+        <View style={styles.meta}>
+          {readyInMinutes != null && (
+            <View style={styles.metaItem}>
+              <Ionicons name="time-outline" size={12} color={colors.text.tertiary} />
+              <Text style={styles.metaText}>{readyInMinutes}m</Text>
             </View>
-          ) : (
-            <View style={styles.almostMake}>
-              <Text style={styles.almostMakeText}>+{missingIngredients.length} missing</Text>
+          )}
+          {nutrition?.calories != null && (
+            <View style={styles.metaItem}>
+              <Ionicons name="flame-outline" size={12} color={colors.text.tertiary} />
+              <Text style={styles.metaText}>{nutrition.calories} kcal</Text>
+            </View>
+          )}
+          {cuisineType && !readyInMinutes && (
+            <View style={styles.metaItem}>
+              <Ionicons name="globe-outline" size={12} color={colors.text.tertiary} />
+              <Text style={styles.metaText}>{cuisineType}</Text>
             </View>
           )}
         </View>
-      </View>
-
-      {recipe.description && (
-        <Text style={styles.description} numberOfLines={2}>{recipe.description}</Text>
-      )}
-
-      {fitReason && (
-        <Text style={styles.fitReason}>{fitReason}</Text>
-      )}
-
-      <View style={styles.meta}>
-        {totalTime > 0 && (
-          <Chip label={`${totalTime} min`} variant="gray" />
-        )}
-        {recipe.tags.slice(0, 3).map((tag) => (
-          <Chip key={tag} label={tag.replace(/_/g, ' ')} variant="green" />
-        ))}
-      </View>
-
-      {missingIngredients.length > 0 && (
-        <View style={styles.missing}>
-          <Text style={styles.missingLabel}>Still need: </Text>
-          <Text style={styles.missingItems} numberOfLines={1}>
-            {missingIngredients.map((i) => i.name).join(', ')}
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {availableIngredients.length} of {availableIngredients.length + missingIngredients.length} ingredients on hand
-        </Text>
       </View>
     </TouchableOpacity>
   );
 }
 
+const CARD_WIDTH = 185;
+
 const styles = StyleSheet.create({
   card: {
+    width: CARD_WIDTH,
     backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: spacing.base,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.gray[100],
-    gap: spacing.sm,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
+  image: {
+    width: CARD_WIDTH,
+    height: 130,
+    backgroundColor: colors.gray[100],
   },
-  titleRow: {
-    flex: 1,
+  imagePlaceholder: {
+    width: CARD_WIDTH,
+    height: 130,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+  badgeReady: { backgroundColor: colors.brand.green },
+  badgeMissing: { backgroundColor: 'rgba(0,0,0,0.55)' },
+  badgeText: { fontSize: 10, fontWeight: typography.weight.bold },
+  badgeTextReady: { color: colors.white },
+  badgeTextMissing: { color: colors.white },
+  content: {
+    padding: spacing.md,
+    gap: spacing.xs,
   },
   title: {
-    fontSize: typography.size.md,
+    fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
-    lineHeight: typography.size.md * 1.3,
-  },
-  statusBadge: {
-    flexShrink: 0,
-  },
-  canMake: {
-    backgroundColor: colors.green[100],
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  canMakeText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-    color: colors.green[700],
-  },
-  almostMake: {
-    backgroundColor: colors.amber[50],
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  almostMakeText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-    color: colors.amber[600],
-  },
-  description: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    lineHeight: typography.size.sm * 1.5,
-  },
-  fitReason: {
-    fontSize: typography.size.sm,
-    color: colors.green[600],
-    fontWeight: typography.weight.medium,
+    lineHeight: typography.size.sm * 1.35,
   },
   meta: {
     flexDirection: 'row',
+    gap: spacing.sm,
     flexWrap: 'wrap',
-    gap: spacing.xs,
+    marginTop: 2,
   },
-  missing: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  missingLabel: {
-    fontSize: typography.size.sm,
-    color: colors.text.tertiary,
-  },
-  missingItems: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    flex: 1,
-  },
-  footer: {
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[100],
-  },
-  footerText: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-  },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metaText: { fontSize: 11, color: colors.text.tertiary },
 });

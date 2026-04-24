@@ -1,23 +1,22 @@
 // Edge Function: inventory
 // Handles inventory snapshot reads and item additions.
 
-import { createServiceClient, resolveAuth, json, CORS_HEADERS } from '../_shared/client.ts';
+import { resolveAuth, json, CORS_HEADERS } from '../_shared/client.ts';
 
 const InventoryItemStatus = { available: 'available', consumed: 'consumed' } as const;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
 
-  const supabase = createServiceClient();
   const url = new URL(req.url);
-  const path = url.pathname.replace(/^\/functions\/v1\/inventory\/?/, '').replace(/^\//, '');
+  const path = url.pathname.split('/').filter(Boolean).pop() ?? '';
 
   // --- GET /inventory/snapshot ---
   if (req.method === 'GET' && path === 'snapshot') {
-    const auth = await resolveAuth(req, supabase);
+    const auth = await resolveAuth(req);
     if (!auth) return json({ success: false, error: 'Unauthorized' }, 401);
 
-    const { data, error } = await supabase
+    const { data, error } = await auth.db
       .from('inventory_items')
       .select('*')
       .eq('household_id', auth.householdId)
@@ -44,7 +43,7 @@ Deno.serve(async (req) => {
 
   // --- POST /inventory/items ---
   if (req.method === 'POST' && path === 'items') {
-    const auth = await resolveAuth(req, supabase);
+    const auth = await resolveAuth(req);
     if (!auth) return json({ success: false, error: 'Unauthorized' }, 401);
 
     let body: { items?: unknown[] };
@@ -68,7 +67,7 @@ Deno.serve(async (req) => {
       notes: item.notes ?? null,
     }));
 
-    const { data, error } = await supabase.from('inventory_items').insert(rows).select();
+    const { data, error } = await auth.db.from('inventory_items').insert(rows).select();
     if (error) return json({ success: false, error: error.message }, 500);
 
     return json({ success: true, data });

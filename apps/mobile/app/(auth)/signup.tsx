@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { FoodStoriiWordmark } from '../../src/components/common/FoodStoriiWordmark';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/common/Button';
@@ -15,31 +16,85 @@ import { TextInput } from '../../src/components/common/TextInput';
 import { useAuthStore } from '../../src/stores/auth.store';
 import * as api from '../../src/services/api';
 import { colors, spacing, typography } from '../../src/theme';
+import { usePostHog } from 'posthog-react-native';
 
 export default function SignUpScreen() {
   const { signIn } = useAuthStore();
+  const posthog = usePostHog();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [confirmed, setConfirmed] = useState(false);
+
   const handleSignUp = async () => {
-    if (!email.trim() || !password) return;
+    if (!name.trim() || !email.trim() || !password) return;
     setError('');
     setLoading(true);
     try {
       const result = await api.signUp(email.trim().toLowerCase(), password, name.trim() || undefined);
-      // Sign in with the new credentials
+      if (result.confirmationRequired) {
+        // Email confirmation is enabled — user must confirm before signing in.
+        posthog.capture('user_signed_up', {
+          confirmation_required: true,
+          household_id: result.householdId ?? null,
+        });
+        setConfirmed(true);
+      } else {
+        // Email confirmation is off — sign in immediately.
       const session = await api.signIn(email.trim().toLowerCase(), password);
-      await signIn(session.accessToken, session.userId, result.householdId);
+        await signIn(session.accessToken, session.userId, result.householdId ?? session.householdId ?? '');
+        posthog.identify(session.userId, {
+          $set: { email: email.trim().toLowerCase(), name: name.trim() },
+          $set_once: { sign_up_date: new Date().toISOString() },
+        });
+        posthog.capture('user_signed_up', {
+          confirmation_required: false,
+          household_id: result.householdId ?? session.householdId ?? null,
+        });
       router.replace('/(onboarding)/intro');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign up failed');
+      const error = err instanceof Error ? err : new Error('Sign up failed');
+      setError(error.message);
+      posthog.capture('$exception', {
+        $exception_list: [
+          {
+            type: error.name,
+            value: error.message,
+            stacktrace: { type: 'raw', frames: error.stack ?? '' },
+          },
+        ],
+        $exception_source: 'react-native',
+        screen: 'SignUp',
+      });
     } finally {
       setLoading(false);
     }
   };
+
+  if (confirmed) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.confirmWrap}>
+          <FoodStoriiWordmark size="md" />
+          <Text style={styles.confirmTitle}>Check your email</Text>
+          <Text style={styles.confirmBody}>
+            We sent a confirmation link to{'\n'}
+            <Text style={styles.confirmEmail}>{email.trim().toLowerCase()}</Text>
+            {'\n\n'}Click the link to activate your account, then come back to sign in.
+          </Text>
+          <Button
+            label="Go to sign in"
+            onPress={() => router.replace('/(auth)/signin')}
+            style={styles.btn}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -50,13 +105,14 @@ export default function SignUpScreen() {
           </TouchableOpacity>
 
           <View style={styles.header}>
+            <FoodStoriiWordmark size="md" />
             <Text style={styles.title}>Create your account</Text>
             <Text style={styles.subtitle}>Join FoodStorii and meet Tina, your household food assistant.</Text>
           </View>
 
           <View style={styles.form}>
             <TextInput
-              label="Your name (optional)"
+              label="Your name"
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -91,7 +147,7 @@ export default function SignUpScreen() {
               label="Create account"
               onPress={handleSignUp}
               loading={loading}
-              disabled={!email.trim() || password.length < 8}
+              disabled={!name.trim() || !email.trim() || password.length < 8}
               style={styles.btn}
             />
 
@@ -118,4 +174,8 @@ const styles = StyleSheet.create({
   errorText: { fontSize: typography.size.sm, color: colors.red[600], textAlign: 'center' },
   btn: { marginTop: spacing.sm },
   terms: { fontSize: typography.size.xs, color: colors.text.tertiary, textAlign: 'center', lineHeight: 18 },
+  confirmWrap: { flex: 1, padding: spacing.xl, justifyContent: 'center', gap: spacing.lg },
+  confirmTitle: { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: colors.text.primary },
+  confirmBody: { fontSize: typography.size.base, color: colors.text.secondary, lineHeight: typography.size.base * 1.6 },
+  confirmEmail: { fontWeight: typography.weight.semibold, color: colors.text.primary },
 });

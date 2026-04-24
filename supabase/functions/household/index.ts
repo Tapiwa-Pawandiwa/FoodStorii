@@ -2,7 +2,7 @@
 // Handles household profile, push token registration, and daily nudge scheduling.
 // Routes on URL path since Supabase Edge Functions are single-entry HTTP handlers.
 
-import { createServiceClient, resolveAuth, json, CORS_HEADERS } from '../_shared/client.ts';
+import { resolveAuth, resolveUser, json, CORS_HEADERS } from '../_shared/client.ts';
 
 const NudgeStatus = { pending: 'pending' } as const;
 const OnboardingStatus = { completed: 'completed' } as const;
@@ -10,19 +10,28 @@ const OnboardingStatus = { completed: 'completed' } as const;
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
 
-  const supabase = createServiceClient();
   const url = new URL(req.url);
-  const path = url.pathname.replace(/^\/functions\/v1\/household\/?/, '').replace(/^\//, '');
+  const path = url.pathname.split('/').filter(Boolean).pop() ?? '';
 
   // --- GET /household/profile ---
   if (req.method === 'GET' && path === 'profile') {
-    const auth = await resolveAuth(req, supabase);
-    if (!auth) return json({ success: false, error: 'Unauthorized' }, 401);
+    // Use resolveUser first so we can distinguish "not authenticated" (401)
+    // from "authenticated but no household yet" (200 with null data).
+    const user = await resolveUser(req);
+    if (!user) return json({ success: false, error: 'Unauthorized' }, 401);
 
-    const { data, error } = await supabase
+    const { data: userRow } = await user.db
+      .from('users')
+      .select('household_id')
+      .eq('id', user.userId)
+      .single();
+
+    if (!userRow?.household_id) return json({ success: true, data: null });
+
+    const { data, error } = await user.db
       .from('household_profiles')
       .select('*')
-      .eq('household_id', auth.householdId)
+      .eq('household_id', userRow.household_id)
       .single();
 
     if (error && error.code !== 'PGRST116') {
@@ -34,7 +43,7 @@ Deno.serve(async (req) => {
 
   // --- PATCH /household/profile ---
   if (req.method === 'PATCH' && path === 'profile') {
-    const auth = await resolveAuth(req, supabase);
+    const auth = await resolveAuth(req);
     if (!auth) return json({ success: false, error: 'Unauthorized' }, 401);
 
     let body: Record<string, unknown>;
@@ -54,6 +63,7 @@ Deno.serve(async (req) => {
     if (body.decisionHour !== undefined) updates.decision_hour = body.decisionHour;
     if (body.avoidIngredients !== undefined) updates.avoid_ingredients = body.avoidIngredients;
     if (body.pickyEaters !== undefined) updates.picky_eaters = body.pickyEaters;
+    if (body.whatsappNumber !== undefined) updates.whatsapp_number = body.whatsappNumber;
     if (body.onboardingStatus !== undefined) {
       updates.onboarding_status = body.onboardingStatus;
       if (body.onboardingStatus === OnboardingStatus.completed) {
@@ -61,7 +71,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await auth.db
       .from('household_profiles')
       .upsert(updates, { onConflict: 'household_id' })
       .select()
@@ -73,7 +83,7 @@ Deno.serve(async (req) => {
 
   // --- POST /household/push-token ---
   if (req.method === 'POST' && path === 'push-token') {
-    const auth = await resolveAuth(req, supabase);
+    const auth = await resolveAuth(req);
     if (!auth) return json({ success: false, error: 'Unauthorized' }, 401);
 
     let body: { token?: string; platform?: string };
@@ -82,7 +92,7 @@ Deno.serve(async (req) => {
     if (!body.token || !body.platform) return json({ success: false, error: 'token and platform required' }, 400);
     if (!['ios', 'android'].includes(body.platform)) return json({ success: false, error: 'platform must be ios or android' }, 400);
 
-    const { error } = await supabase
+    const { error } = await auth.db
       .from('push_tokens')
       .upsert(
         { household_id: auth.householdId, token: body.token, platform: body.platform, is_active: true, updated_at: new Date().toISOString() },
@@ -95,10 +105,10 @@ Deno.serve(async (req) => {
 
   // --- POST /household/schedule-daily-nudge ---
   if (req.method === 'POST' && path === 'schedule-daily-nudge') {
-    const auth = await resolveAuth(req, supabase);
+    const auth = await resolveAuth(req);
     if (!auth) return json({ success: false, error: 'Unauthorized' }, 401);
 
-    const { data: profile } = await supabase
+    const { data: profile } = await auth.db
       .from('household_profiles')
       .select('decision_hour')
       .eq('household_id', auth.householdId)
@@ -110,7 +120,7 @@ Deno.serve(async (req) => {
     const nudgeTime = new Date();
     nudgeTime.setHours(hours, minutes - 30, 0, 0);
 
-    const { data, error } = await supabase
+    const { data, error } = await auth.db
       .from('nudge_candidates')
       .insert({
         household_id: auth.householdId,
@@ -125,6 +135,31 @@ Deno.serve(async (req) => {
 
     if (error) return json({ success: false, error: error.message }, 500);
     return json({ success: true, data });
+  }
+
+  // --- POST /household/whatsapp-link ---
+  if (req.method === 'POST' && path === 'whatsapp-link') {
+    const auth = await resolveAuth(req);
+    if (!auth) return json({ success: false, error: 'Unauthorized' }, 401);
+
+    // Generate a 6-character alphanumeric token (no confusable chars)
+    const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = crypto.getRandomValues(new Uint8Array(6));
+    const token = Array.from(bytes).map((b) => CHARS[b % CHARS.length]).join('');
+
+    // Invalidate any existing unused tokens for this household
+    await auth.db
+      .from('whatsapp_link_tokens')
+      .update({ used_at: new Date().toISOString() })
+      .eq('household_id', auth.householdId)
+      .is('used_at', null);
+
+    const { error } = await auth.db
+      .from('whatsapp_link_tokens')
+      .insert({ token, household_id: auth.householdId });
+
+    if (error) return json({ success: false, error: error.message }, 500);
+    return json({ success: true, data: { token } });
   }
 
   return json({ success: false, error: 'Not found' }, 404);

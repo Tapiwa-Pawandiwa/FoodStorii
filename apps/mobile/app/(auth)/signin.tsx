@@ -8,18 +8,19 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { FoodStoriiWordmark } from '../../src/components/common/FoodStoriiWordmark';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/common/Button';
 import { TextInput } from '../../src/components/common/TextInput';
 import { useAuthStore } from '../../src/stores/auth.store';
 import * as api from '../../src/services/api';
-import { getProfile } from '../../src/services/api';
-import { OnboardingStatus } from '@foodstorii/shared';
 import { colors, spacing, typography } from '../../src/theme';
+import { usePostHog } from 'posthog-react-native';
 
 export default function SignInScreen() {
-  const { signIn } = useAuthStore();
+  const { signIn, hasCompletedOnboarding } = useAuthStore();
+  const posthog = usePostHog();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -31,19 +32,38 @@ export default function SignInScreen() {
     setLoading(true);
     try {
       const result = await api.signIn(email.trim().toLowerCase(), password);
-      const householdId = result.householdId ?? '';
-      console.log('[SignIn] userId:', result.userId, '| householdId:', householdId);
-      await signIn(result.accessToken, result.userId, householdId);
+      console.log('[SignIn] userId:', result.userId, '| householdId:', result.householdId);
+      await signIn(result.accessToken, result.userId, result.householdId ?? '');
 
-      // Check onboarding status using the profile (token is now stored)
-      const profile = await getProfile();
-      if (!profile || profile.onboardingStatus === OnboardingStatus.not_started) {
-        router.replace('/(onboarding)');
-      } else {
+      posthog.identify(result.userId, {
+        $set: { email: email.trim().toLowerCase() },
+      });
+      posthog.capture('user_signed_in', {
+        household_id: result.householdId ?? null,
+      });
+
+      // Route based on local onboarding flag (no network call needed here).
+      // On a fresh device for an existing user, hasCompletedOnboarding may be
+      // false — they'll redo the wizard which is harmless for MVP.
+      if (hasCompletedOnboarding) {
         router.replace('/(tabs)');
+      } else {
+        router.replace('/(onboarding)/intro');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed');
+      const error = err instanceof Error ? err : new Error('Sign in failed');
+      setError(error.message);
+      posthog.capture('$exception', {
+        $exception_list: [
+          {
+            type: error.name,
+            value: error.message,
+            stacktrace: { type: 'raw', frames: error.stack ?? '' },
+          },
+        ],
+        $exception_source: 'react-native',
+        screen: 'SignIn',
+      });
     } finally {
       setLoading(false);
     }
@@ -54,16 +74,12 @@ export default function SignInScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <View style={styles.logoMark}>
-              <Text style={styles.logoLetter}>F</Text>
-            </View>
-            <Text style={styles.appName}>FoodStorii</Text>
+            <FoodStoriiWordmark size="lg" />
             <Text style={styles.tagline}>Your household food assistant</Text>
           </View>
 
           <View style={styles.form}>
             <Text style={styles.formTitle}>Welcome back</Text>
-
             <TextInput
               label="Email"
               value={email}
@@ -110,21 +126,10 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.white },
   flex: { flex: 1 },
   scroll: { flexGrow: 1, padding: spacing.xl },
-  header: { alignItems: 'center', paddingTop: spacing['3xl'], paddingBottom: spacing['2xl'] },
-  logoMark: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: colors.green[600],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.base,
-  },
-  logoLetter: { fontSize: 32, fontWeight: typography.weight.bold, color: colors.white },
-  appName: { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: colors.text.primary },
-  tagline: { fontSize: typography.size.sm, color: colors.text.tertiary, marginTop: 4 },
+  header: { alignItems: 'center', paddingTop: spacing['3xl'], paddingBottom: spacing['2xl'], gap: spacing.sm },
+  tagline: { fontSize: typography.size.sm, color: colors.text.tertiary },
   form: { gap: spacing.base },
-  formTitle: { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.text.primary, marginBottom: spacing.sm },
+  formTitle: { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.text.primary },
   errorText: { fontSize: typography.size.sm, color: colors.red[600], textAlign: 'center' },
   btn: { marginTop: spacing.sm },
   forgotLink: { alignSelf: 'flex-end' },

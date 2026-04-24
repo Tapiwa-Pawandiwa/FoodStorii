@@ -11,7 +11,6 @@ import { TypingIndicator } from '../../src/components/chat/TypingIndicator';
 import { ChatInput } from '../../src/components/chat/ChatInput';
 import { QuickReplies } from '../../src/components/chat/QuickReplies';
 import { useChatStore } from '../../src/stores/chat.store';
-import { useAuthStore } from '../../src/stores/auth.store';
 import * as api from '../../src/services/api';
 import { ConversationMode, OnboardingStatus } from '@foodstorii/shared';
 import { colors, spacing, typography } from '../../src/theme';
@@ -26,7 +25,6 @@ const GREETING_REPLIES = [
 ];
 
 export default function OnboardingScreen() {
-  const { householdId, userId } = useAuthStore();
   const {
     messages, conversationId, isLoading, suggestedReplies,
     addUserMessage, addAssistantMessage, setLoading, setConversationId, setMode,
@@ -49,30 +47,20 @@ export default function OnboardingScreen() {
   }, [messages.length, isLoading]);
 
   async function sendMessage(text: string) {
-    console.log(`[Onboarding] sendMessage called: "${text.slice(0, 80)}" | householdId: ${householdId} | isLoading: ${isLoading}`);
     if (!text.trim()) return;
 
     addUserMessage(text);
     setLoading(true);
 
-    if (!householdId || !userId) {
-      console.error('[Onboarding] BLOCKED — householdId:', householdId, '| userId:', userId);
-      addAssistantMessage(`err_${Date.now()}`, "I can't connect right now. Please sign out and sign back in.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      console.log(`[Onboarding] → API sendMessage | conversationId: ${conversationId}`);
+      console.log(`[Onboarding] → sendMessage | conversationId: ${conversationId}`);
       const response = await api.sendMessage({
         conversationId: conversationId ?? undefined,
-        householdId,
-        userId,
         message: text,
         mode: ConversationMode.onboarding,
       });
 
-      console.log(`[Onboarding] ← API response | mode: ${response.mode} | reply length: ${response.reply?.length}`);
+      console.log(`[Onboarding] ← response | mode: ${response.mode} | reply: ${response.reply?.length} chars`);
       setConversationId(response.conversationId);
       setMode(response.mode);
       addAssistantMessage(response.messageId, response.reply, response.actions, response.suggestedQuickReplies);
@@ -85,8 +73,9 @@ export default function OnboardingScreen() {
         }
       }
     } catch (err) {
-      console.error('[Onboarding] sendMessage failed:', err instanceof Error ? err.message : err);
-      addAssistantMessage(`err_${Date.now()}`, "Something went wrong — please try again.");
+      const msg = err instanceof Error ? err.message : 'Something went wrong — please try again.';
+      console.error('[Onboarding] sendMessage failed:', msg);
+      addAssistantMessage(`err_${Date.now()}`, msg);
     } finally {
       setLoading(false);
     }

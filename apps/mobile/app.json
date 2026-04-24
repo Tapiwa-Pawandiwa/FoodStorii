@@ -5,8 +5,13 @@
     "version": "0.1.0",
     "scheme": "foodstorii",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/FoodStoriiLogo.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/FoodStoriiLogo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "newArchEnabled": true,
     "assetBundlePatterns": [
       "**/*"
@@ -25,12 +30,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-notifications",
       [
         "expo-splash-screen",
         {
           "backgroundColor": "#ffffff",
-          "image": "./assets/splash.png",
-          "imageWidth": 200,
+          "image": "./assets/FoodStoriiLogo.png",
+          "imageWidth": 300,
           "resizeMode": "contain"
         }
       ],

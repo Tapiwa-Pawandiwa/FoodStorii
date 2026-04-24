@@ -1,7 +1,9 @@
 // Edge Function: nudge-dispatch
 // Fetches pending nudge_candidates and delivers them via the Expo push API.
-// Called by a pg_cron job every 15 minutes. The cron authenticates using
-// the service role key as a Bearer token — no separate secret needed.
+// Called by a pg_cron job every 15 minutes.
+//
+// Authentication: caller must present INTERNAL_CRON_SECRET as a Bearer token.
+// This prevents public calls.
 //
 // pg_cron setup (run in Supabase SQL editor):
 //   SELECT cron.schedule(
@@ -10,14 +12,14 @@
 //     $$ SELECT net.http_post(
 //          url := current_setting('app.supabase_url') || '/functions/v1/nudge-dispatch',
 //          headers := jsonb_build_object(
-//            'Authorization', 'Bearer ' || current_setting('app.service_role_key'),
+//            'Authorization', 'Bearer ' || current_setting('app.cron_secret'),
 //            'Content-Type', 'application/json'
 //          ),
 //          body := '{}'::jsonb
 //        ) $$
 //   );
 
-import { createServiceClient, json, CORS_HEADERS } from '../_shared/client.ts';
+import { createInternalClient, json, CORS_HEADERS } from '../_shared/client.ts';
 
 const NudgeStatus = { pending: 'pending', sent: 'sent' } as const;
 
@@ -25,15 +27,14 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ success: false, error: 'Method not allowed' }, 405);
 
-  // Authenticate: caller must present the service role key as Bearer token.
-  // This prevents public calls while requiring no separate secret.
+  // Authenticate: caller must present INTERNAL_CRON_SECRET as Bearer token.
   const authHeader = req.headers.get('Authorization');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  if (!authHeader || authHeader !== `Bearer ${serviceRoleKey}`) {
+  const cronSecret = Deno.env.get('INTERNAL_CRON_SECRET');
+  if (!cronSecret || !authHeader || authHeader !== `Bearer ${cronSecret}`) {
     return json({ success: false, error: 'Unauthorized' }, 401);
   }
 
-  const supabase = createServiceClient();
+  const supabase = createInternalClient();
   const now = new Date().toISOString();
 
   try {

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+
   StyleSheet,
   TouchableOpacity,
   TextInput,
@@ -11,6 +12,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { FoodStoriiWordmark } from '../../src/components/common/FoodStoriiWordmark';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Button } from '../../src/components/common/Button';
 import { SelectableChip } from '../../src/components/common/SelectableChip';
@@ -19,6 +22,7 @@ import * as api from '../../src/services/api';
 import { requestPushPermissionsAndGetToken } from '../../src/services/notifications';
 import { PrimaryDriver, OnboardingStatus } from '@foodstorii/shared';
 import { colors, spacing, radius, typography, shadows } from '../../src/theme';
+import { usePostHog } from 'posthog-react-native';
 
 // ---------------------------------------------------------------------------
 // Kitchen item catalogue
@@ -35,10 +39,10 @@ const KITCHEN_ITEMS = {
 // ---------------------------------------------------------------------------
 
 interface WizardData {
-  primaryDriver: PrimaryDriver | null;
+  primaryDrivers: PrimaryDriver[];
   householdSize: number;
   pickyEaters: boolean;
-  avoidIngredients: string;
+  avoidIngredients: string[];
   selectedKitchenItems: Set<string>;
   customItems: Record<string, string>;
   decisionHour: Date;
@@ -54,21 +58,37 @@ const DEFAULT_DECISION_HOUR = (() => {
 // Step 0 — Warm Welcome
 // ---------------------------------------------------------------------------
 
-function StepWelcome({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
+function StepWelcome({ onNext }: { onNext: () => void }) {
   return (
     <View style={styles.stepContainer}>
+      <View style={styles.stepHeader}>
+        <FoodStoriiWordmark size="md" />
+      </View>
       <View style={styles.top}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarLetter}>T</Text>
+          <Ionicons name="chatbubble-ellipses-outline" size={36} color={colors.white} />
         </View>
         <Text style={styles.headline}>
-          Hi, I'm Tina. I'm here to help you reclaim your kitchen and your time.
+          Hey, I'm Tina — your household food assistant.
         </Text>
-        <Text style={styles.body}>A few quick questions. Takes about 90 seconds.</Text>
+        <Text style={styles.body}>I help you track what's in your kitchen, cut waste, and figure out what to cook. Takes about 90 seconds to set up.</Text>
+        <View style={styles.featureRow}>
+          {[
+            { icon: 'cube-outline' as const, label: 'Track your pantry' },
+            { icon: 'restaurant-outline' as const, label: 'Get recipe ideas' },
+            { icon: 'cart-outline' as const, label: 'Smart shopping lists' },
+          ].map((f) => (
+            <View key={f.label} style={styles.featureItem}>
+              <View style={styles.featureIconWrap}>
+                <Ionicons name={f.icon} size={20} color={colors.green[600]} />
+              </View>
+              <Text style={styles.featureLabel}>{f.label}</Text>
+            </View>
+          ))}
+        </View>
       </View>
       <View style={styles.actions}>
         <Button label="Let's go" onPress={onNext} />
-        <Button label="Skip for now" onPress={onSkip} variant="ghost" />
       </View>
     </View>
   );
@@ -78,52 +98,61 @@ function StepWelcome({ onNext, onSkip }: { onNext: () => void; onSkip: () => voi
 // Step 1 — Primary Driver
 // ---------------------------------------------------------------------------
 
-const DRIVER_OPTIONS: { label: string; value: PrimaryDriver; emoji: string; sub: string }[] = [
-  { label: 'Save money', value: PrimaryDriver.saving_money, emoji: '💰', sub: 'Reduce waste and spend less on groceries' },
-  { label: 'Eat better', value: PrimaryDriver.improving_health, emoji: '🥗', sub: 'Make healthier choices every day' },
-  { label: 'Make life easier', value: PrimaryDriver.pure_convenience, emoji: '⚡', sub: 'Spend less time thinking about food' },
+const DRIVER_OPTIONS: { label: string; value: PrimaryDriver; icon: keyof typeof Ionicons.glyphMap; sub: string }[] = [
+  { label: 'Save money', value: PrimaryDriver.saving_money, icon: 'wallet-outline', sub: 'Reduce waste and spend less on groceries' },
+  { label: 'Eat better', value: PrimaryDriver.improving_health, icon: 'leaf-outline', sub: 'Healthier choices, diets, and meal plans' },
+  { label: 'Make life easier', value: PrimaryDriver.pure_convenience, icon: 'flash-outline', sub: 'Less time thinking about food, faster meals' },
 ];
 
 function StepPrimaryDriver({
   selected,
-  onSelect,
+  onToggle,
   onNext,
 }: {
-  selected: PrimaryDriver | null;
-  onSelect: (v: PrimaryDriver) => void;
+  selected: PrimaryDriver[];
+  onToggle: (v: PrimaryDriver) => void;
   onNext: () => void;
 }) {
   return (
     <View style={styles.stepContainer}>
+      <View style={styles.stepHeader}>
+        <FoodStoriiWordmark size="md" />
+      </View>
       <View style={styles.top}>
-        <Text style={styles.stepLabel}>Step 1 of 4</Text>
-        <Text style={styles.headline}>What matters most to you?</Text>
+        <View style={{ width: '100%' }}>
+          <Text style={styles.stepLabel}>Step 1 of 4</Text>
+          <Text style={styles.headline}>What matters most to you?</Text>
+          <Text style={styles.subHeadline}>Pick everything that applies.</Text>
+        </View>
         <View style={styles.cardList}>
-          {DRIVER_OPTIONS.map((opt) => (
-            <TouchableOpacity
-              key={opt.value}
-              onPress={() => onSelect(opt.value)}
-              activeOpacity={0.7}
-              style={[styles.driverCard, selected === opt.value && styles.driverCardSelected]}
-            >
-              <Text style={styles.driverEmoji}>{opt.emoji}</Text>
-              <View style={styles.driverText}>
-                <Text style={[styles.driverLabel, selected === opt.value && styles.driverLabelSelected]}>
-                  {opt.label}
-                </Text>
-                <Text style={styles.driverSub}>{opt.sub}</Text>
-              </View>
-              {selected === opt.value && (
-                <View style={styles.driverCheck}>
-                  <Text style={styles.driverCheckMark}>✓</Text>
+          {DRIVER_OPTIONS.map((opt) => {
+            const isSelected = selected.includes(opt.value);
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => onToggle(opt.value)}
+                activeOpacity={0.7}
+                style={[styles.driverCard, isSelected && styles.driverCardSelected]}
+              >
+                <View style={[styles.driverIconWrap, isSelected && styles.driverIconWrapSelected]}>
+                  <Ionicons name={opt.icon} size={22} color={isSelected ? colors.green[600] : colors.text.secondary} />
                 </View>
-              )}
-            </TouchableOpacity>
-          ))}
+                <View style={styles.driverText}>
+                  <Text style={[styles.driverLabel, isSelected && styles.driverLabelSelected]}>
+                    {opt.label}
+                  </Text>
+                  <Text style={styles.driverSub}>{opt.sub}</Text>
+                </View>
+                <View style={[styles.driverCheck, isSelected && styles.driverCheckSelected]}>
+                  {isSelected && <Ionicons name="checkmark" size={14} color={colors.white} />}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
       <View style={styles.actions}>
-        <Button label="Next" onPress={onNext} disabled={!selected} />
+        <Button label="Next" onPress={onNext} disabled={selected.length === 0} />
       </View>
     </View>
   );
@@ -133,25 +162,39 @@ function StepPrimaryDriver({
 // Step 2 — Household & Dietary
 // ---------------------------------------------------------------------------
 
+const AVOID_PRESETS = ['Pork', 'Shellfish', 'Gluten', 'Peanuts', 'Dairy', 'Eggs', 'Chicken', 'Sesame', 'Wheat', 'Fish'];
+
 function StepHousehold({
   householdSize,
   pickyEaters,
   avoidIngredients,
   onChangeSize,
   onTogglePicky,
-  onChangeAvoid,
+  onToggleAvoid,
   onNext,
 }: {
   householdSize: number;
   pickyEaters: boolean;
-  avoidIngredients: string;
+  avoidIngredients: string[];
   onChangeSize: (n: number) => void;
   onTogglePicky: (v: boolean) => void;
-  onChangeAvoid: (s: string) => void;
+  onToggleAvoid: (item: string) => void;
   onNext: () => void;
 }) {
+  const [customText, setCustomText] = useState('');
+
+  function commitCustom() {
+    const items = customText.split(',').map((s) => s.trim()).filter(Boolean);
+    items.forEach((item) => {
+      const normalised = item.charAt(0).toUpperCase() + item.slice(1).toLowerCase();
+      if (!avoidIngredients.includes(normalised)) onToggleAvoid(normalised);
+    });
+    setCustomText('');
+  }
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <FoodStoriiWordmark size="md" />
       <Text style={styles.stepLabel}>Step 2 of 4</Text>
       <Text style={styles.headline}>Who am I cooking for?</Text>
 
@@ -199,15 +242,48 @@ function StepHousehold({
       {/* Avoid ingredients */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Anything to avoid?</Text>
-        <Text style={styles.sectionHint}>Allergies, restrictions, or dislikes (comma-separated)</Text>
+        <Text style={styles.sectionHint}>Tap to select, or type something specific below.</Text>
+        <View style={styles.chipWrap}>
+          {AVOID_PRESETS.map((item) => {
+            const active = avoidIngredients.includes(item);
+            return (
+              <TouchableOpacity
+                key={item}
+                onPress={() => onToggleAvoid(item)}
+                activeOpacity={0.7}
+                style={[styles.avoidChip, active && styles.avoidChipSelected]}
+              >
+                {active && <Ionicons name="close-circle" size={14} color={colors.red[500]} style={{ marginRight: 4 }} />}
+                <Text style={[styles.avoidChipText, active && styles.avoidChipTextSelected]}>{item}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
         <TextInput
-          style={styles.textInput}
-          value={avoidIngredients}
-          onChangeText={onChangeAvoid}
-          placeholder="e.g. pork, shellfish, nuts"
+          style={[styles.textInput, styles.textInputSmall]}
+          value={customText}
+          onChangeText={setCustomText}
+          onSubmitEditing={commitCustom}
+          onBlur={commitCustom}
+          placeholder="Other (e.g. tree nuts, soy)…"
           placeholderTextColor={colors.text.tertiary}
           returnKeyType="done"
         />
+        {avoidIngredients.filter((i) => !AVOID_PRESETS.includes(i)).length > 0 && (
+          <View style={[styles.chipWrap, { marginTop: spacing.sm }]}>
+            {avoidIngredients.filter((i) => !AVOID_PRESETS.includes(i)).map((item) => (
+              <TouchableOpacity
+                key={item}
+                onPress={() => onToggleAvoid(item)}
+                activeOpacity={0.7}
+                style={[styles.avoidChip, styles.avoidChipSelected]}
+              >
+                <Ionicons name="close-circle" size={14} color={colors.red[500]} style={{ marginRight: 4 }} />
+                <Text style={[styles.avoidChipText, styles.avoidChipTextSelected]}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={[styles.actions, styles.actionsInline]}>
@@ -352,20 +428,34 @@ function StepDecisionHour({
 
 export default function OnboardingIntroScreen() {
   const { householdId, markOnboardingComplete } = useAuthStore();
+  const posthog = usePostHog();
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
 
+  useEffect(() => {
+    posthog.capture('onboarding_step_viewed', { step });
+  }, [step]);
+
   const [data, setData] = useState<WizardData>({
-    primaryDriver: null,
+    primaryDrivers: [],
     householdSize: 2,
     pickyEaters: false,
-    avoidIngredients: '',
+    avoidIngredients: [],
     selectedKitchenItems: new Set(),
     customItems: {},
     decisionHour: DEFAULT_DECISION_HOUR,
   });
+
+  function togglePrimaryDriver(v: PrimaryDriver) {
+    setData((prev) => {
+      const next = prev.primaryDrivers.includes(v)
+        ? prev.primaryDrivers.filter((d) => d !== v)
+        : [...prev.primaryDrivers, v];
+      return { ...prev, primaryDrivers: next };
+    });
+  }
 
   function toggleKitchenItem(item: string) {
     setData((prev) => {
@@ -384,10 +474,7 @@ export default function OnboardingIntroScreen() {
       const minutes = data.decisionHour.getMinutes().toString().padStart(2, '0');
       const decisionHour = `${hours}:${minutes}`;
 
-      const avoidIngredients = data.avoidIngredients
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const avoidIngredients = data.avoidIngredients;
 
       // Build initial inventory items from kitchen walkthrough
       const allSelected = [
@@ -400,7 +487,7 @@ export default function OnboardingIntroScreen() {
       // Save profile + inventory + schedule nudge in parallel
       await Promise.all([
         api.updateProfile({
-          primaryDriver: data.primaryDriver ?? undefined,
+          primaryDriver: data.primaryDrivers[0] ?? undefined,
           householdSize: data.householdSize,
           pickyEaters: data.pickyEaters,
           avoidIngredients: avoidIngredients.length > 0 ? avoidIngredients : undefined,
@@ -409,8 +496,6 @@ export default function OnboardingIntroScreen() {
         }),
         allSelected.length > 0
           ? api.sendMessage({
-              householdId,
-              userId: '',
               message: `__wizard_inventory__:${allSelected.join(',')}`,
               mode: 'onboarding' as import('@foodstorii/shared').ConversationMode,
             }).catch(() => null)
@@ -424,13 +509,20 @@ export default function OnboardingIntroScreen() {
         await api.scheduleDailyNudge();
       }
 
+      posthog.capture('onboarding_completed', {
+        household_size: data.householdSize,
+        primary_drivers: data.primaryDrivers,
+        picky_eaters: data.pickyEaters,
+        avoid_ingredients_count: data.avoidIngredients.length,
+        kitchen_items_count: data.selectedKitchenItems.size,
+      });
       await markOnboardingComplete();
-      router.replace('/(onboarding)');
+      router.replace('/(onboarding)/whatsapp-link');
     } catch (err) {
       console.error('[OnboardingWizard] handleFinish error:', err);
-      // Still proceed to Tina chat — don't block user on API error
+      // Still proceed — don't block user on API error
       await markOnboardingComplete().catch(() => null);
-      router.replace('/(onboarding)');
+      router.replace('/(onboarding)/whatsapp-link');
     } finally {
       setSaving(false);
     }
@@ -441,17 +533,13 @@ export default function OnboardingIntroScreen() {
       {step === 0 && (
         <StepWelcome
           onNext={() => setStep(1)}
-          onSkip={() => {
-            markOnboardingComplete().catch(() => null);
-            router.replace('/(tabs)');
-          }}
         />
       )}
 
       {step === 1 && (
         <StepPrimaryDriver
-          selected={data.primaryDriver}
-          onSelect={(v) => setData((d) => ({ ...d, primaryDriver: v }))}
+          selected={data.primaryDrivers}
+          onToggle={togglePrimaryDriver}
           onNext={() => setStep(2)}
         />
       )}
@@ -463,7 +551,14 @@ export default function OnboardingIntroScreen() {
           avoidIngredients={data.avoidIngredients}
           onChangeSize={(n) => setData((d) => ({ ...d, householdSize: n }))}
           onTogglePicky={(v) => setData((d) => ({ ...d, pickyEaters: v }))}
-          onChangeAvoid={(s) => setData((d) => ({ ...d, avoidIngredients: s }))}
+          onToggleAvoid={(item) =>
+            setData((d) => ({
+              ...d,
+              avoidIngredients: d.avoidIngredients.includes(item)
+                ? d.avoidIngredients.filter((i) => i !== item)
+                : [...d.avoidIngredients, item],
+            }))
+          }
           onNext={() => setStep(3)}
         />
       )}
@@ -528,7 +623,15 @@ const styles = StyleSheet.create({
     paddingBottom: spacing['3xl'],
   },
 
-  top: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xl },
+  stepHeader: {
+    alignItems: 'center',
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
+  },
+
+  top: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xl, paddingTop: spacing.xl },
 
   avatar: {
     width: 80,
@@ -538,7 +641,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarLetter: { fontSize: 36, fontWeight: typography.weight.bold, color: colors.white },
+
+  featureRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  featureItem: { flex: 1, alignItems: 'center', gap: spacing.xs },
+  featureIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.green[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureLabel: { fontSize: typography.size.xs, color: colors.text.secondary, textAlign: 'center' },
+
+  subHeadline: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    marginTop: 4,
+  },
 
   stepLabel: {
     fontSize: typography.size.xs,
@@ -584,7 +710,18 @@ const styles = StyleSheet.create({
     borderColor: colors.green[600],
     backgroundColor: colors.green[50],
   },
-  driverEmoji: { fontSize: 28 },
+  driverIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.gray[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  driverIconWrapSelected: {
+    backgroundColor: colors.green[100],
+  },
   driverText: { flex: 1 },
   driverLabel: {
     fontSize: typography.size.base,
@@ -596,16 +733,22 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     color: colors.text.secondary,
     marginTop: 2,
+    lineHeight: typography.size.sm * 1.4,
   },
   driverCheck: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.green[600],
+    borderWidth: 2,
+    borderColor: colors.gray[300],
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  driverCheckMark: { color: colors.white, fontSize: 14, fontWeight: typography.weight.bold },
+  driverCheckSelected: {
+    backgroundColor: colors.green[600],
+    borderColor: colors.green[600],
+  },
 
   // Stepper
   section: { marginBottom: spacing.xl },
@@ -689,6 +832,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
 
+
   // Chips
   chipWrap: {
     flexDirection: 'row',
@@ -697,6 +841,30 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   chipGap: {},
+
+  // Avoid preset pills
+  avoidChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.gray[200],
+    backgroundColor: colors.white,
+  },
+  avoidChipSelected: {
+    borderColor: colors.red[500],
+    backgroundColor: colors.red[50],
+  },
+  avoidChipText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    fontWeight: typography.weight.medium,
+  },
+  avoidChipTextSelected: {
+    color: colors.red[600],
+  },
 
   // iOS time picker
   iosPicker: {

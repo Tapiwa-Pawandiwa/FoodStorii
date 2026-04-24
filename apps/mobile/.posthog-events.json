@@ -1,0 +1,62 @@
+[
+  {
+    "event": "user_signed_in",
+    "description": "User successfully signed in with email and password",
+    "file": "app/(auth)/signin.tsx"
+  },
+  {
+    "event": "user_signed_up",
+    "description": "User successfully created a new account",
+    "file": "app/(auth)/signup.tsx"
+  },
+  {
+    "event": "user_signed_out",
+    "description": "User signed out from the profile screen",
+    "file": "app/(tabs)/profile.tsx"
+  },
+  {
+    "event": "onboarding_completed",
+    "description": "User completed all onboarding wizard steps and saved their household profile",
+    "file": "app/(onboarding)/intro.tsx"
+  },
+  {
+    "event": "onboarding_step_viewed",
+    "description": "User viewed a specific onboarding wizard step (top of funnel)",
+    "file": "app/(onboarding)/intro.tsx"
+  },
+  {
+    "event": "pantry_items_added",
+    "description": "User added one or more items to their pantry inventory",
+    "file": "app/(tabs)/inventory.tsx"
+  },
+  {
+    "event": "recipe_viewed",
+    "description": "User opened the detail modal for a recipe",
+    "file": "app/(tabs)/recipes.tsx"
+  },
+  {
+    "event": "recipe_missing_ingredients_added",
+    "description": "User added a recipe's missing ingredients to their shopping list",
+    "file": "app/(tabs)/recipes.tsx"
+  },
+  {
+    "event": "shopping_item_added",
+    "description": "User added an item to a shopping list",
+    "file": "app/(tabs)/shopping.tsx"
+  },
+  {
+    "event": "shopping_item_checked",
+    "description": "User marked a shopping list item as purchased/completed",
+    "file": "app/(tabs)/shopping.tsx"
+  },
+  {
+    "event": "whatsapp_link_pressed",
+    "description": "User tapped the WhatsApp connect button on the home screen",
+    "file": "app/(tabs)/index.tsx"
+  },
+  {
+    "event": "whatsapp_linked",
+    "description": "User successfully linked their WhatsApp number via the onboarding step",
+    "file": "app/(onboarding)/whatsapp-link.tsx"
+  }
+]

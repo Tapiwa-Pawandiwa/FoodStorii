@@ -2,63 +2,88 @@
 // There is no Express server. No API keys are stored in this app — only the anon key,
 // which is a public key designed to be embedded in client applications.
 
-import type { ChatResponse, HouseholdProfile, InventorySnapshot } from '@foodstorii/shared';
-import { getAccessToken } from '../stores/auth.store';
+import type { ChatResponse, HouseholdProfile, InventorySnapshot, RecipeSuggestion } from '@foodstorii/shared';
 import { supabaseClient } from './supabaseClient';
 
-// Base URL for all Edge Functions — derived from the Supabase project URL.
-const FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1`;
-
-// ---- Internal helpers ------------------------------------------------------
+// ---- Internal helper -------------------------------------------------------
+// Uses supabaseClient.functions.invoke() so the SDK handles authentication
+// headers (apikey + Bearer token) correctly, including the new sb_publishable_
+// key format and automatic token refresh.
 
 async function callFunction<T>(
   functionPath: string,
   options: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const token = await getAccessToken();
-  const url = `${FUNCTIONS_URL}/${functionPath}`;
   const method = options.method ?? 'GET';
 
-  console.log(`[API] → ${method} ${url}`);
+  // Ensure the session is fresh before each call. getSession() auto-refreshes
+  // an expired access token using the stored refresh token.
+  const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+  const hasToken = !!sessionData.session?.access_token;
+  console.log(`[API] → ${method} ${functionPath} | hasToken: ${hasToken} | userId: ${sessionData.session?.user?.id ?? 'none'}`);
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
-    });
-  } catch (networkErr) {
-    console.error(`[API] ✗ Network error on ${method} ${url}:`, networkErr);
-    throw new Error("Couldn't reach the server. Check your connection and try again.");
+  if (sessionError) {
+    console.error(`[API] session error:`, sessionError.message);
   }
 
-  console.log(`[API] ← ${res.status} ${url}`);
-
-  if (res.status === 401) {
-    const { useAuthStore } = await import('../stores/auth.store');
-    await useAuthStore.getState().signOut();
-    const { router } = await import('expo-router');
-    router.replace('/(auth)/signin');
-    throw new Error('Your session has expired. Please sign in again.');
+  // The FunctionsClient caches its auth token and does NOT call getSession()
+  // internally before each request. Manually sync the current token so the
+  // functions client always sends a fresh Bearer header.
+  if (sessionData.session?.access_token) {
+    supabaseClient.functions.setAuth(sessionData.session.access_token);
   }
 
-  let body: { success: boolean; data?: T; error?: string };
-  try {
-    body = await res.json();
-    console.log('[API]   response:', body);
-  } catch {
-    throw new Error('Unexpected response from server.');
+  const { data, error } = await supabaseClient.functions.invoke<{
+    success: boolean;
+    data?: T;
+    error?: string;
+  }>(functionPath, {
+    method: method as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+    ...(options.body != null ? { body: options.body } : {}),
+  });
+
+  if (error) {
+    let msg = error.message;
+    let statusCode: number | null = null;
+    try {
+      const ctx = (error as unknown as { context?: unknown }).context;
+      if (ctx && typeof (ctx as Response).json === 'function') {
+        const resp = ctx as Response;
+        statusCode = resp.status;
+        const body = await resp.json();
+        msg = body?.error ?? body?.message ?? error.message;
+        console.error(`[API] ✗ ${functionPath} ${resp.status} —`, msg);
+      } else {
+        console.error(`[API] ✗ ${functionPath}:`, msg);
+      }
+    } catch {
+      console.error(`[API] ✗ ${functionPath}:`, msg);
+    }
+    if (statusCode === 401) {
+      // The server rejected the JWT. Try refreshing the session once.
+      // If the refresh succeeds (token was just expired), the caller can retry.
+      // If it fails (password changed, session revoked), sign the user out.
+      console.warn('[API] 401 — attempting session refresh...');
+      const { error: refreshError } = await supabaseClient.auth.refreshSession();
+      if (refreshError) {
+        console.warn('[API] session refresh failed — signing out:', refreshError.message);
+        const { useAuthStore } = await import('../stores/auth.store');
+        await useAuthStore.getState().signOut();
+      } else {
+        console.log('[API] session refreshed — caller should retry the request');
+      }
+    }
+    throw new Error(msg);
   }
 
-  if (!body.success || !res.ok) {
-    throw new Error(body.error ?? 'Something went wrong. Please try again.');
+  if (!data?.success) {
+    const msg = data?.error ?? 'Something went wrong. Please try again.';
+    console.error(`[API] ✗ ${functionPath} (not success):`, msg);
+    throw new Error(msg);
   }
 
-  return body.data as T;
+  console.log(`[API] ← OK ${functionPath}`);
+  return data.data as T;
 }
 
 // ---- Auth — uses Supabase JS client directly (no Edge Function needed) -----
@@ -67,10 +92,8 @@ export async function signUp(
   email: string,
   password: string,
   displayName?: string,
-): Promise<{ userId: string; householdId: string }> {
-  // Calls the auth-signup Edge Function which uses auth.admin.createUser
-  // so email confirmation is bypassed. The Postgres trigger creates the household.
-  return callFunction<{ userId: string; householdId: string }>('auth-signup', {
+): Promise<{ userId: string; householdId: string | null; confirmationRequired: boolean }> {
+  return callFunction<{ userId: string; householdId: string | null; confirmationRequired: boolean }>('auth-signup', {
     method: 'POST',
     body: { email, password, displayName },
   });
@@ -99,9 +122,8 @@ export async function signIn(
 }
 
 export async function forgotPassword(email: string): Promise<void> {
-  // Always resolves — never leaks whether the email exists
   await supabaseClient.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo: process.env.EXPO_PUBLIC_SUPABASE_URL, // deep-link redirect for OTP
+    redirectTo: process.env.EXPO_PUBLIC_SUPABASE_URL,
   });
 }
 
@@ -135,6 +157,7 @@ export async function sendMessage(payload: {
   conversationId?: string;
   mode?: string;
 }): Promise<ChatResponse> {
+  console.log('[API] sendMessage →', payload.mode, '| msg:', payload.message.slice(0, 60));
   return callFunction<ChatResponse>('tina', { method: 'POST', body: payload });
 }
 
@@ -171,8 +194,52 @@ export async function scheduleDailyNudge(): Promise<void> {
   await callFunction<void>('household/schedule-daily-nudge', { method: 'POST', body: {} });
 }
 
+export async function generateWhatsAppLinkToken(): Promise<string> {
+  const result = await callFunction<{ token: string }>('household/whatsapp-link', {
+    method: 'POST',
+    body: {},
+  });
+  return result.token;
+}
+
 // ---- Inventory -------------------------------------------------------------
 
 export async function getInventorySnapshot(): Promise<InventorySnapshot> {
   return callFunction<InventorySnapshot>('inventory/snapshot');
+}
+
+export async function addInventoryItems(
+  items: { name: string; quantity?: number; unit?: string; category?: string }[],
+): Promise<void> {
+  // Route through Tina with a structured message so it uses the add_inventory_items tool
+  await sendMessage({
+    message: `__add_items__:${items.map((i) => `${i.quantity ? i.quantity + ' ' : ''}${i.unit ? i.unit + ' ' : ''}${i.name}`).join(', ')}`,
+    mode: 'inventory',
+  });
+}
+
+// ---- Recipes ---------------------------------------------------------------
+
+export async function searchRecipesByPantry(params?: {
+  maxMissing?: number;
+  limit?: number;
+}): Promise<{ suggestions: RecipeSuggestion[]; pantryEmpty: boolean }> {
+  const qs = new URLSearchParams();
+  if (params?.maxMissing !== undefined) qs.set('maxMissing', String(params.maxMissing));
+  if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+  const path = qs.toString() ? `recipes/pantry?${qs}` : 'recipes/pantry';
+  return callFunction<{ suggestions: RecipeSuggestion[]; pantryEmpty: boolean }>(path);
+}
+
+export async function searchRecipes(
+  q: string,
+  params?: { limit?: number },
+): Promise<{ suggestions: RecipeSuggestion[] }> {
+  const qs = new URLSearchParams({ q });
+  if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+  return callFunction<{ suggestions: RecipeSuggestion[] }>(`recipes/search?${qs}`);
+}
+
+export async function getRecipeDetail(externalId: string): Promise<RecipeSuggestion> {
+  return callFunction<RecipeSuggestion>(`recipes/detail?id=${encodeURIComponent(externalId)}`);
 }

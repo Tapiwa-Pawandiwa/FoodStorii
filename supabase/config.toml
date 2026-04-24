@@ -1,0 +1,27 @@
+# All functions handle their own JWT validation via the user-context client
+# pattern (createClient with SUPABASE_ANON_KEY + forwarded Authorization header).
+# This is required for compatibility with sb_publishable_ anon keys.
+[functions.tina]
+verify_jwt = false
+
+[functions.household]
+verify_jwt = false
+
+[functions.inventory]
+verify_jwt = false
+
+[functions.auth-signup]
+verify_jwt = false
+
+[functions.auth-reset-password]
+verify_jwt = false
+
+[functions.nudge-dispatch]
+verify_jwt = false
+
+[functions.recipes]
+verify_jwt = false
+
+# WhatsApp webhook — receives requests from Twilio, not from authenticated app users.
+[functions.whatsapp]
+verify_jwt = false

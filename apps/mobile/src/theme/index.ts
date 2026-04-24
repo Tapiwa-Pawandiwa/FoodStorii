@@ -1,50 +1,79 @@
+// ── FoodStorii Design System ─────────────────────────────────────────────────
+// COLOR ROLES
+//   bg           → primary app background (warm beige)
+//   white        → cards and elevated surfaces
+//   brand.orange → primary CTA buttons
+//   brand.yellow → badges, highlights
+//   brand.blue   → empty states, informational
+//   green.*      → icons, success states, small accents ONLY
+//   text.*       → typography hierarchy
+
 export const colors = {
-  // Brand
+  // === BRAND PALETTE ===
+  brand: {
+    orange: '#f9a620',    // Primary CTA
+    yellow: '#ffd449',    // Badges, highlights
+    blue: '#a8d5e2',      // Empty states, info
+    green: '#548c2f',     // Icon accent, success
+    darkGreen: '#104911', // Deep green accent
+  },
+
+  // === SURFACE ===
+  bg: '#FFFFFF',          // Primary background
+  white: '#FFFFFF',
+
+  // === TYPOGRAPHY ===
+  text: {
+    primary: '#0F0F0F',
+    secondary: '#6B6B6B',
+    tertiary: '#A0A0A0',
+    inverse: '#FFFFFF',
+  },
+
+  // === GREEN (accent use only — icons, success, small highlights) ===
   green: {
-    50: '#f0fdf4',
-    100: '#dcfce7',
-    200: '#bbf7d0',
-    400: '#4ade80',
-    500: '#22c55e',
-    600: '#16a34a',
-    700: '#15803d',
-    800: '#166534',
+    50: '#f2f9ed',
+    100: '#d9f0c8',
+    200: '#b3e090',
+    300: '#86c962',
+    400: '#6aaf40',
+    500: '#548c2f',
+    600: '#548c2f',
+    700: '#104911',
+    800: '#0c3610',
   },
-  // Neutrals
-  white: '#ffffff',
+
+  // === NEUTRALS ===
   gray: {
-    50: '#f9fafb',
-    100: '#f3f4f6',
-    200: '#e5e7eb',
-    300: '#d1d5db',
-    400: '#9ca3af',
-    500: '#6b7280',
-    600: '#4b5563',
-    700: '#374151',
-    800: '#1f2937',
-    900: '#111827',
+    50: '#F8F8F8',
+    100: '#EEEBE4',
+    200: '#E0DDD6',
+    300: '#C8C5BE',
+    400: '#A0A0A0',
+    500: '#6B6B6B',
+    600: '#4A4A4A',
+    700: '#2E2E2E',
+    800: '#1A1A1A',
+    900: '#0F0F0F',
   },
-  // Status
+
+  // === STATUS ===
   amber: {
-    50: '#fffbeb',
-    100: '#fef3c7',
-    500: '#f59e0b',
-    600: '#d97706',
+    50: '#fff8f0',
+    100: '#ffe8c0',
+    500: '#f9a620',
+    600: '#e09010',
   },
   red: {
     50: '#fef2f2',
     100: '#fee2e2',
+    400: '#f87171',
     500: '#ef4444',
     600: '#dc2626',
   },
-  // Text
-  text: {
-    primary: '#111827',
-    secondary: '#6b7280',
-    tertiary: '#9ca3af',
-    inverse: '#ffffff',
-  },
 };
+
+// ── Spacing ──────────────────────────────────────────────────────────────────
 
 export const spacing = {
   xs: 4,
@@ -57,13 +86,18 @@ export const spacing = {
   '3xl': 48,
 };
 
+// ── Radius ───────────────────────────────────────────────────────────────────
+
 export const radius = {
   sm: 8,
   md: 12,
   lg: 16,
   xl: 20,
+  '2xl': 28,
   full: 9999,
 };
+
+// ── Typography ───────────────────────────────────────────────────────────────
 
 export const typography = {
   size: {
@@ -75,12 +109,14 @@ export const typography = {
     xl: 20,
     '2xl': 24,
     '3xl': 28,
+    '4xl': 32,
   },
   weight: {
     regular: '400' as const,
     medium: '500' as const,
     semibold: '600' as const,
     bold: '700' as const,
+    extrabold: '800' as const,
   },
   lineHeight: {
     tight: 1.2,
@@ -89,26 +125,40 @@ export const typography = {
   },
 };
 
+// ── Shadows ──────────────────────────────────────────────────────────────────
+
 export const shadows = {
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   md: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 4,
   },
   lg: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.09,
+    shadowRadius: 16,
     elevation: 6,
   },
+  float: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 12,
+  },
 };
+
+// ── Tab bar ──────────────────────────────────────────────────────────────────
+// Floating pill offset — add to screen scroll contentContainerStyle.paddingBottom
+
+export const TAB_BAR_BOTTOM_PADDING = 120;

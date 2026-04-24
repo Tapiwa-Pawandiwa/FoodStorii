@@ -1,3 +1,48 @@
+// Spoonacular-backed recipe types (used across mobile and edge functions)
+
+export interface SpoonacularIngredient {
+  name: string;
+  amount: number;
+  unit: string;
+  original: string;
+}
+
+export interface SpoonacularStep {
+  number: number;
+  step: string;
+}
+
+export interface RecipeNutrition {
+  calories: number | null;
+  protein: string | null;
+  carbs: string | null;
+  fat: string | null;
+  fiber: string | null;
+}
+
+export interface RecipeSuggestion {
+  externalId: string;
+  source: 'spoonacular';
+  title: string;
+  imageUrl: string | null;
+  summary: string | null;
+  cuisineType: string | null;
+  readyInMinutes: number | null;
+  servings: number | null;
+  diets: string[];
+  dishTypes: string[];
+  nutrition: RecipeNutrition | null;
+  availableIngredients: string[];
+  missingIngredients: { name: string; original: string }[];
+  missingCount: number;
+  canMakeNow: boolean;
+  fitScore: number;        // 0–100
+  fitReasons: string[];
+  ingredients?: SpoonacularIngredient[];
+  instructions?: SpoonacularStep[];
+}
+
+// Legacy internal recipe types (kept for existing DB schema)
 export interface Recipe {
   id: string;
   title: string;
@@ -21,15 +66,6 @@ export interface RecipeIngredient {
   quantity: number | null;
   unit: string | null;
   optional: boolean;
-}
-
-export interface RecipeSuggestion {
-  recipe: Recipe;
-  matchScore: number;
-  availableIngredients: string[];
-  missingIngredients: RecipeIngredient[];
-  canMakeNow: boolean;
-  fitReason: string | null;
 }
 
 export interface FindRecipesInput {

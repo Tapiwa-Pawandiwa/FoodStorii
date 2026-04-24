@@ -6,8 +6,9 @@ import {
   FlatList,
   TouchableOpacity,
   Dimensions,
-  Animated,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { FoodStoriiWordmark } from '../../src/components/common/FoodStoriiWordmark';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/stores/auth.store';
@@ -15,28 +16,28 @@ import { colors, spacing, typography } from '../../src/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const SLIDES = [
+const SLIDES: { key: string; icon: keyof typeof Ionicons.glyphMap; headline: string; body: string }[] = [
   {
     key: '1',
-    emoji: '🧊',
+    icon: 'cube-outline',
     headline: 'Know what you have',
     body: "Stop guessing what's in your fridge. Tina tracks your pantry so nothing gets forgotten.",
   },
   {
     key: '2',
-    emoji: '🥦',
+    icon: 'leaf-outline',
     headline: 'Waste less, every week',
     body: "Get a heads-up before things expire. Use what you have before it's gone.",
   },
   {
     key: '3',
-    emoji: '🍳',
+    icon: 'restaurant-outline',
     headline: "Cook with what's there",
     body: 'Recipes matched to your actual ingredients — not a shopping list in disguise.',
   },
   {
     key: '4',
-    emoji: '🛒',
+    icon: 'cart-outline',
     headline: 'Shop with a plan',
     body: 'Shopping lists built around what you actually need. No more duplicates or forgotten items.',
   },
@@ -73,7 +74,7 @@ export default function SlidesScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.topBar}>
-        <View />
+        <FoodStoriiWordmark size="sm" />
         <TouchableOpacity onPress={handleSkip} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
@@ -90,7 +91,9 @@ export default function SlidesScreen() {
         renderItem={({ item }) => (
           <View style={styles.slide}>
             <View style={styles.illustrationArea}>
-              <Text style={styles.emoji}>{item.emoji}</Text>
+              <View style={styles.iconCircle}>
+                <Ionicons name={item.icon} size={80} color={colors.green[600]} />
+              </View>
             </View>
             <View style={styles.textArea}>
               <Text style={styles.headline}>{item.headline}</Text>
@@ -125,7 +128,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.white },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
@@ -145,8 +149,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: {
-    fontSize: 120,
+  iconCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: colors.green[50],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   textArea: {
     paddingBottom: spacing['2xl'],

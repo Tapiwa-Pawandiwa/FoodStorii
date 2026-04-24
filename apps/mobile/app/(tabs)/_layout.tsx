@@ -1,11 +1,20 @@
 import { Tabs } from 'expo-router';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography } from '../../src/theme';
+import { colors, typography, shadows } from '../../src/theme';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
 function TabIcon({ name, focused }: { name: IoniconsName; focused: boolean }) {
-  return <Ionicons name={focused ? name : (`${name}-outline` as IoniconsName)} size={24} color={focused ? colors.green[600] : colors.gray[400]} />;
+  return (
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons
+        name={focused ? name : (`${name}-outline` as IoniconsName)}
+        size={22}
+        color={focused ? colors.brand.green : colors.gray[400]}
+      />
+    </View>
+  );
 }
 
 export default function TabsLayout() {
@@ -13,33 +22,44 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.green[600],
+        tabBarActiveTintColor: colors.brand.green,
         tabBarInactiveTintColor: colors.gray[400],
+        tabBarBackground: () => null,
         tabBarStyle: {
-          borderTopColor: colors.gray[100],
+          position: 'absolute',
+          bottom: 20,
+          marginHorizontal: 20,
+          borderRadius: 32,
+          height: 68,
           backgroundColor: colors.white,
-          height: 84,
-          paddingBottom: 20,
+          borderTopWidth: 0,
+          paddingBottom: 8,
           paddingTop: 8,
+          ...shadows.float,
         },
         tabBarLabelStyle: {
           fontSize: typography.size.xs,
-          fontWeight: typography.weight.medium,
+          fontWeight: typography.weight.semibold,
+          marginTop: 2,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tina',
-          tabBarIcon: ({ focused }) => <TabIcon name="chatbubble" focused={focused} />,
+          title: 'Home',
+          tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
         }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="inventory"
         options={{
           title: 'Pantry',
-          tabBarIcon: ({ focused }) => <TabIcon name="nutrition" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="basket" focused={focused} />,
         }}
       />
       <Tabs.Screen

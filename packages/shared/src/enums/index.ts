@@ -42,6 +42,7 @@ export enum ShoppingListItemStatus {
   pending = 'pending',
   checked = 'checked',
   skipped = 'skipped',
+  saved_for_later = 'saved_for_later',
 }
 
 export enum MediaUploadStatus {
