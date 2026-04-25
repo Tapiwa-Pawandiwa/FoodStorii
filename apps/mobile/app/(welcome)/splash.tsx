@@ -82,8 +82,8 @@ const S = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 240,
-    height: 68,
+    width: 336,
+    height: 95,
   },
 
   panel: {
@@ -104,39 +104,39 @@ const S = StyleSheet.create({
   },
 
   headline: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     color: '#1A1A18',
-    lineHeight: 34,
+    lineHeight: 39,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 16,
     color: '#5A5A52',
-    marginTop: 8,
-    lineHeight: 18,
+    marginTop: 10,
+    lineHeight: 22,
   },
 
   primaryBtn: {
     backgroundColor: '#48A111',
     borderRadius: 999,
-    height: 52,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 22,
   },
   primaryBtnText: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '600',
     color: '#FFFFFF',
     letterSpacing: 0.3,
   },
 
   signInLink: {
-    marginTop: 16,
+    marginTop: 18,
     alignItems: 'center',
   },
   signInText: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#5A5A52',
     textAlign: 'center',
   },
