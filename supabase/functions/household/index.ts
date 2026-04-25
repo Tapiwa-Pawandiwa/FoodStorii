@@ -60,7 +60,6 @@ Deno.serve(async (req) => {
     if (body.notificationTolerance !== undefined) updates.notification_tolerance = body.notificationTolerance;
     if (body.automationReadiness !== undefined) updates.automation_readiness = body.automationReadiness;
     if (body.primaryDriver !== undefined) updates.primary_driver = body.primaryDriver;
-    if (body.decisionHour !== undefined) updates.decision_hour = body.decisionHour;
     if (body.avoidIngredients !== undefined) updates.avoid_ingredients = body.avoidIngredients;
     if (body.pickyEaters !== undefined) updates.picky_eaters = body.pickyEaters;
     if (body.whatsappNumber !== undefined) updates.whatsapp_number = body.whatsappNumber;
@@ -104,29 +103,38 @@ Deno.serve(async (req) => {
   }
 
   // --- POST /household/schedule-daily-nudge ---
+  // Reads nudge_time from meal_preferences (dinner first, then any meal)
+  // and creates a nudge_candidates row 30 minutes before that time.
   if (req.method === 'POST' && path === 'schedule-daily-nudge') {
     const auth = await resolveAuth(req);
     if (!auth) return json({ success: false, error: 'Unauthorized' }, 401);
 
-    const { data: profile } = await auth.db
-      .from('household_profiles')
-      .select('decision_hour')
+    const { data: mealPrefs } = await auth.db
+      .from('meal_preferences')
+      .select('nudge_time, meal_type')
       .eq('household_id', auth.householdId)
-      .single();
+      .in('meal_type', ['dinner', 'lunch', 'breakfast'])
+      .not('nudge_time', 'is', null)
+      .order('nudge_time')
+      .limit(1);
 
-    if (!profile?.decision_hour) return json({ success: true, data: null });
+    if (!mealPrefs?.[0]?.nudge_time) return json({ success: true, data: null });
 
-    const [hours, minutes] = (profile.decision_hour as string).split(':').map(Number);
+    const [hours, minutes] = (mealPrefs[0].nudge_time as string).split(':').map(Number);
     const nudgeTime = new Date();
     nudgeTime.setHours(hours, minutes - 30, 0, 0);
+
+    const mealLabel = mealPrefs[0].meal_type === 'breakfast' ? 'breakfast'
+      : mealPrefs[0].meal_type === 'lunch' ? 'lunch'
+      : 'dinner';
 
     const { data, error } = await auth.db
       .from('nudge_candidates')
       .insert({
         household_id: auth.householdId,
         nudge_type: 'daily_meal_nudge',
-        title: 'Time to think about dinner',
-        body: "Looking at your kitchen, I have ideas for tonight. Open FoodStorii to see what Tina suggests.",
+        title: `Time to think about ${mealLabel}`,
+        body: `Looking at your kitchen, I have ideas for tonight. Open FoodStorii to see what Tina suggests.`,
         scheduled_for: nudgeTime.toISOString(),
         status: NudgeStatus.pending,
       })
@@ -135,6 +143,37 @@ Deno.serve(async (req) => {
 
     if (error) return json({ success: false, error: error.message }, 500);
     return json({ success: true, data });
+  }
+
+  // --- POST /household/meal-preferences ---
+  if (req.method === 'POST' && path === 'meal-preferences') {
+    const auth = await resolveAuth(req);
+    if (!auth) return json({ success: false, error: 'Unauthorized' }, 401);
+
+    let body: { preferences?: Array<{ meal_type: string; days: string[]; nudge_time: string }> };
+    try { body = await req.json(); } catch { return json({ success: false, error: 'Invalid JSON' }, 400); }
+
+    if (!body.preferences?.length) return json({ success: false, error: 'preferences array required' }, 400);
+
+    const VALID_MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'meal_prep'];
+    const rows = body.preferences
+      .filter((p) => VALID_MEAL_TYPES.includes(p.meal_type))
+      .map((p) => ({
+        household_id: auth.householdId,
+        meal_type: p.meal_type,
+        days: p.days ?? [],
+        nudge_time: p.nudge_time ?? null,
+        updated_at: new Date().toISOString(),
+      }));
+
+    if (!rows.length) return json({ success: false, error: 'No valid meal types provided' }, 400);
+
+    const { error } = await auth.db
+      .from('meal_preferences')
+      .upsert(rows, { onConflict: 'household_id,meal_type' });
+
+    if (error) return json({ success: false, error: error.message }, 500);
+    return json({ success: true });
   }
 
   // --- POST /household/whatsapp-link ---

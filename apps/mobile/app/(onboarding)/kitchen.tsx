@@ -16,7 +16,7 @@ import { useAuthStore } from '../../src/stores/auth.store';
 const CATEGORIES = [
   {
     label: 'STAPLES',
-    items: ['Eggs', 'Rice', 'Pasta', 'Bread', 'Potatoes', 'Oats'],
+    items: ['Eggs', 'Rice', 'Pasta', 'Bread', 'Potatoes', 'Oats', 'Cereal', 'Milk', 'Butter', 'Yoghurt', 'Cheese'],
     location: 'pantry' as const,
   },
   {
@@ -71,14 +71,14 @@ export default function KitchenScreen() {
     } finally {
       setSaving(false);
     }
-    router.push('/(onboarding)/dinner-time');
+    router.push('/(onboarding)/meal-types');
   }
 
   return (
     <SafeAreaView style={S.safe}>
       <ScrollView contentContainerStyle={S.scroll} showsVerticalScrollIndicator={false}>
 
-        <ProgressDots step={3} total={4} />
+        <ProgressDots step={3} total={5} />
 
         <Text style={S.headline}>What's in your kitchen{'\n'}right now?</Text>
         <Text style={S.subtitle}>Just pick what you have. We'll handle the rest.</Text>

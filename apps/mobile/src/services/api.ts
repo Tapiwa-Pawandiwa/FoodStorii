@@ -112,10 +112,10 @@ async function callFunction<T>(
     } catch {
       console.error(`[API] ✗ ${functionPath}:`, msg);
     }
-    if (statusCode === 401) {
-      // The server rejected the JWT. Try refreshing the session once.
-      // If the refresh succeeds (token was just expired), the caller can retry.
-      // If it fails (password changed, session revoked), sign the user out.
+    if (statusCode === 401 && hasToken) {
+      // Had a token but server rejected it — try refreshing once.
+      // Only do this when we had a token; skip when called pre-auth (e.g. onboarding)
+      // to avoid spurious signout cascades.
       console.warn('[API] 401 — attempting session refresh...');
       const { error: refreshError } = await supabaseClient.auth.refreshSession();
       if (refreshError) {
@@ -269,6 +269,15 @@ export async function registerPushToken(
 
 export async function scheduleDailyNudge(): Promise<void> {
   await callFunction<void>('household/schedule-daily-nudge', { method: 'POST', body: {} });
+}
+
+export async function saveMealPreferences(
+  preferences: Array<{ meal_type: string; days: string[]; nudge_time: string }>,
+): Promise<void> {
+  await callFunction<void>('household/meal-preferences', {
+    method: 'POST',
+    body: { preferences },
+  });
 }
 
 export async function generateWhatsAppLinkToken(): Promise<string> {

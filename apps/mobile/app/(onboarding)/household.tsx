@@ -59,7 +59,7 @@ export default function HouseholdScreen() {
     <SafeAreaView style={S.safe}>
       <ScrollView contentContainerStyle={S.scroll} showsVerticalScrollIndicator={false}>
 
-        <ProgressDots step={2} total={4} />
+        <ProgressDots step={2} total={5} />
 
         <Text style={S.headline}>Tell us about your{'\n'}household.</Text>
         <Text style={S.subtitle}>We'll adjust portions and suggestions.</Text>

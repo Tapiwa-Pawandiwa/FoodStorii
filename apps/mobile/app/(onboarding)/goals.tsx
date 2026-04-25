@@ -7,6 +7,7 @@ import {
   ScrollView,
   SafeAreaView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../src/stores/auth.store';
 import * as api from '../../src/services/api';
@@ -28,32 +29,38 @@ function ProgressDots({ step, total }: { step: number; total: number }) {
 
 // ── Goal option ───────────────────────────────────────────────────────────────
 
-const GOALS = [
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+const GOALS: { key: string; icon: IoniconsName; iconColor: string; title: string; subtitle: string }[] = [
   {
     key: 'saving_money',
-    emoji: '💸',
+    icon: 'cash-outline',
+    iconColor: '#48A111',
     title: 'Save money on food',
     subtitle: 'Track spend, reduce waste, shop smarter',
   },
   {
     key: 'improving_health',
-    emoji: '🥗',
+    icon: 'restaurant-outline',
+    iconColor: '#48A111',
     title: 'Eat better, stress less',
     subtitle: 'Healthy meals without the overthinking',
   },
   {
     key: 'pure_convenience',
-    emoji: '📋',
+    icon: 'document-text-outline',
+    iconColor: '#48A111',
     title: 'Get organised',
-    subtitle: 'Always know what\'s in your kitchen',
+    subtitle: "Always know what's in your kitchen",
   },
-] as const;
+];
 
-type GoalKey = typeof GOALS[number]['key'];
+type GoalKey = 'saving_money' | 'improving_health' | 'pure_convenience';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function GoalsScreen() {
+  const { accessToken } = useAuthStore();
   const [selected, setSelected] = useState<GoalKey | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -61,8 +68,9 @@ export default function GoalsScreen() {
     if (!selected || saving) return;
     setSaving(true);
     try {
-      // Save goal to household profile — best effort, continue if fails
-      await api.updateProfile({ primary_driver: selected }).catch(() => {});
+      if (accessToken) {
+        await api.updateProfile({ primary_driver: selected }).catch(() => {});
+      }
     } finally {
       setSaving(false);
     }
@@ -73,7 +81,7 @@ export default function GoalsScreen() {
     <SafeAreaView style={S.safe}>
       <ScrollView contentContainerStyle={S.scroll} showsVerticalScrollIndicator={false}>
 
-        <ProgressDots step={1} total={4} />
+        <ProgressDots step={1} total={5} />
 
         <Text style={S.headline}>What matters most{'\n'}to you?</Text>
         <Text style={S.subtitle}>Pick the one that fits you best.</Text>
@@ -85,18 +93,15 @@ export default function GoalsScreen() {
               <TouchableOpacity
                 key={g.key}
                 style={[S.card, isSelected && S.cardSelected]}
-                onPress={() => setSelected(g.key)}
+                onPress={() => setSelected(g.key as GoalKey)}
                 activeOpacity={0.85}
               >
-                <View style={S.emojiCircle}>
-                  <Text style={S.emoji}>{g.emoji}</Text>
+                <View style={[S.iconCircle, isSelected && S.iconCircleSelected]}>
+                  <Ionicons name={g.icon} size={24} color={isSelected ? '#FFFFFF' : '#48A111'} />
                 </View>
                 <View style={S.cardText}>
                   <Text style={S.cardTitle}>{g.title}</Text>
                   <Text style={S.cardSub}>{g.subtitle}</Text>
-                </View>
-                <View style={[S.radio, isSelected && S.radioSelected]}>
-                  {isSelected && <View style={S.radioDot} />}
                 </View>
               </TouchableOpacity>
             );
@@ -168,15 +173,17 @@ const S = StyleSheet.create({
     backgroundColor: '#F0F8EC',
   },
 
-  emojiCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F7F0F0',
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F0F8EC',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: { fontSize: 22 },
+  iconCircleSelected: {
+    backgroundColor: '#48A111',
+  },
 
   cardText: { flex: 1 },
   cardTitle: {
@@ -189,26 +196,6 @@ const S = StyleSheet.create({
     color: '#5A5A52',
     marginTop: 2,
     lineHeight: 17,
-  },
-
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#EAE4E4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioSelected: {
-    borderColor: '#48A111',
-    backgroundColor: '#48A111',
-  },
-  radioDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
   },
 
   footer: {
